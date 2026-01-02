@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -38,14 +39,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // پیدا کردن ویوها
         ExtendedFloatingActionButton btnCapture = findViewById(R.id.btnCapture);
         btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         
-        // تنظیمات لیست
+        // مقداردهی اولیه لیست - اگر این بخش نباشد برنامه کرش می‌کند
         adapter = new ImageAdapter(imageList);
-        recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
-        recyclerView.setAdapter(adapter);
+        if (recyclerView != null) {
+            recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+            recyclerView.setAdapter(adapter);
+        }
 
         btnCapture.setOnClickListener(v -> checkPermissionAndOpen());
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
@@ -60,34 +64,41 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void openCamera() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+        try {
+            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+        } catch (Exception e) {
+            Toast.makeText(this, "خطا در باز کردن دوربین", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK && data != null) {
             Bundle extras = data.getExtras();
-            Bitmap bitmap = (Bitmap) extras.get("data");
-            imageList.add(bitmap);
-            adapter.notifyDataSetChanged(); // رفرش لیست
-            btnSavePdf.setVisibility(View.VISIBLE);
+            if (extras != null) {
+                Bitmap bitmap = (Bitmap) extras.get("data");
+                if (bitmap != null) {
+                    imageList.add(bitmap);
+                    adapter.notifyDataSetChanged();
+                    btnSavePdf.setVisibility(View.VISIBLE);
+                }
+            }
         }
     }
 
     private void showNamingDialog() {
-        final android.widget.EditText input = new android.widget.EditText(this);
-        input.setHint("نام فایل را وارد کنید");
+        final EditText input = new EditText(this);
+        input.setHint("مثلاً: MyScan");
         new AlertDialog.Builder(this)
-            .setTitle("ذخیره PDF")
-            .setMessage("یک نام برای فایل خود انتخاب کنید:")
+            .setTitle("ذخیره فایل PDF")
             .setView(input)
-            .setPositiveButton("تایید و ذخیره", (dialog, which) -> {
+            .setPositiveButton("ذخیره", (dialog, which) -> {
                 String name = input.getText().toString();
                 createPdf(name.isEmpty() ? "Scan_" + System.currentTimeMillis() : name);
             })
-            .setNegativeButton("انصراف", null)
+            .setNegativeButton("لغو", null)
             .show();
     }
 
@@ -104,24 +115,19 @@ public class MainActivity extends AppCompatActivity {
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 bmp.compress(Bitmap.CompressFormat.JPEG, 80, stream);
                 Image image = Image.getInstance(stream.toByteArray());
-                // فیت کردن تصویر در صفحه PDF
-                float scaler = ((document.getPageSize().getWidth() - document.leftMargin()
-                        - document.rightMargin()) / image.getWidth()) * 100;
+                float scaler = ((document.getPageSize().getWidth() - document.leftMargin() - document.rightMargin()) / image.getWidth()) * 100;
                 image.scalePercent(scaler);
                 document.add(image);
                 document.newPage();
             }
             
             document.close();
-            Toast.makeText(this, "فایل با موفقیت در Downloads ذخیره شد", Toast.LENGTH_LONG).show();
-            
-            // پاکسازی برای اسکن بعدی
+            Toast.makeText(this, "ذخیره شد در پوشه Downloads", Toast.LENGTH_LONG).show();
             imageList.clear();
             adapter.notifyDataSetChanged();
             btnSavePdf.setVisibility(View.GONE);
-            
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در ذخیره سازی", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "خطا در ساخت PDF", Toast.LENGTH_SHORT).show();
         }
     }
 }
