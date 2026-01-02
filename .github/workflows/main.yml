@@ -2,8 +2,8 @@ name: Build Scan2PDF APK
 
 on:
   push:
-    branches: [ main ] # هر زمان که کدی به شاخه اصلی بفرستید اجرا می‌شود
-  workflow_dispatch: # اجازه اجرای دستی را هم می‌دهد
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -19,8 +19,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Gradle
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5 # استفاده از نسخه پایدار به جای 9.2
 
       - name: Build Debug APK
         run: gradle assembleDebug
