@@ -30,18 +30,22 @@ public class MainActivity extends AppCompatActivity {
     static final int REQUEST_IMAGE_CAPTURE = 1;
     static final int PERMISSION_CODE = 100;
     private List<Bitmap> imageList = new ArrayList<>();
-    // شما به یک Adapter ساده برای RecyclerView نیاز دارید که در مرحله بعد می‌سازیم
-    
+    private ImageAdapter adapter;
+    private FloatingActionButton btnSavePdf;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         ExtendedFloatingActionButton btnCapture = findViewById(R.id.btnCapture);
-        FloatingActionButton btnSavePdf = findViewById(R.id.btnSavePdf);
+        btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         
+        // تنظیمات لیست
+        adapter = new ImageAdapter(imageList);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+        recyclerView.setAdapter(adapter);
 
         btnCapture.setOnClickListener(v -> checkPermissionAndOpen());
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
@@ -67,26 +71,29 @@ public class MainActivity extends AppCompatActivity {
             Bundle extras = data.getExtras();
             Bitmap bitmap = (Bitmap) extras.get("data");
             imageList.add(bitmap);
-            findViewById(R.id.btnSavePdf).setVisibility(View.VISIBLE);
-            Toast.makeText(this, "صفحه اضافه شد. تعداد کل: " + imageList.size(), Toast.LENGTH_SHORT).show();
-            // اینجا باید لیست را رفرش کنید
+            adapter.notifyDataSetChanged(); // رفرش لیست
+            btnSavePdf.setVisibility(View.VISIBLE);
         }
     }
 
     private void showNamingDialog() {
-        // ایجاد یک دیالوگ ساده برای پرسیدن نام فایل
         final android.widget.EditText input = new android.widget.EditText(this);
+        input.setHint("نام فایل را وارد کنید");
         new AlertDialog.Builder(this)
-            .setTitle("نام فایل PDF")
+            .setTitle("ذخیره PDF")
+            .setMessage("یک نام برای فایل خود انتخاب کنید:")
             .setView(input)
-            .setPositiveButton("ذخیره", (dialog, which) -> createPdf(input.getText().toString()))
+            .setPositiveButton("تایید و ذخیره", (dialog, which) -> {
+                String name = input.getText().toString();
+                createPdf(name.isEmpty() ? "Scan_" + System.currentTimeMillis() : name);
+            })
+            .setNegativeButton("انصراف", null)
             .show();
     }
 
     private void createPdf(String fileName) {
         Document document = new Document();
         try {
-            if (fileName.isEmpty()) fileName = "Scan_" + System.currentTimeMillis();
             File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File file = new File(path, fileName + ".pdf");
             
@@ -97,17 +104,24 @@ public class MainActivity extends AppCompatActivity {
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 bmp.compress(Bitmap.CompressFormat.JPEG, 80, stream);
                 Image image = Image.getInstance(stream.toByteArray());
-                image.scaleToFit(document.getPageSize().getWidth() - 50, document.getPageSize().getHeight() - 50);
+                // فیت کردن تصویر در صفحه PDF
+                float scaler = ((document.getPageSize().getWidth() - document.leftMargin()
+                        - document.rightMargin()) / image.getWidth()) * 100;
+                image.scalePercent(scaler);
                 document.add(image);
                 document.newPage();
             }
             
             document.close();
-            Toast.makeText(this, "PDF در پوشه Downloads ذخیره شد", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "فایل با موفقیت در Downloads ذخیره شد", Toast.LENGTH_LONG).show();
+            
+            // پاکسازی برای اسکن بعدی
             imageList.clear();
-            findViewById(R.id.btnSavePdf).setVisibility(View.GONE);
+            adapter.notifyDataSetChanged();
+            btnSavePdf.setVisibility(View.GONE);
+            
         } catch (Exception e) {
-            Toast.makeText(this, "خطا: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "خطا در ذخیره سازی", Toast.LENGTH_SHORT).show();
         }
     }
 }
