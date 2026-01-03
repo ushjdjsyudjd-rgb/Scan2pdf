@@ -20,20 +20,12 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 8.5
-
-      # این مرحله جدید برای دادن اجازه اجرای گریدل است
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
-        env:
-          JAVA_TOOL_OPTIONS: "-Xmx4g"
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.workers.max=1"
+        # متغیر قبلی JAVA_TOOL_OPTIONS را حذف کردیم و مستقیماً به گریدل رم دادیم
+        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=512m"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
