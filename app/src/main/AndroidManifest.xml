@@ -13,11 +13,13 @@
     </queries>
 
     <application 
-        android:label="Scan2PDF" 
+        android:label="پی دی اف ساز" 
         android:icon="@drawable/icon"
         android:roundIcon="@drawable/icon"
         android:theme="@style/Theme.Scan2pdf"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:allowBackup="true"
+        android:supportsRtl="true">
         
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
