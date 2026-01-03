@@ -20,15 +20,7 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
       - name: Build Debug APK
-        # اینجا دیگه هیچ تنظیماتی اضافه نمی‌کنیم تا با فایل properties تداخل پیدا نکنه
-        run: ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Scan2PDF-Debug-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+        # به جای استفاده از ./gradlew، از خودِ دستور gradle استفاده می‌کنیم
+        # این کار باعث می‌شود تنظیمات خراب اسکریپت gradlew نادیده گرفته شود
+        run: gradle assembleDebug --no-daemon
