@@ -15,6 +15,10 @@
         android:allowBackup="true"
         android:supportsRtl="true">
         
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr,ica" />
+
         <activity android:name=".SplashActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
