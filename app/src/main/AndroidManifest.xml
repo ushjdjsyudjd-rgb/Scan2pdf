@@ -34,7 +34,7 @@
             android:label="My Files"
             android:parentActivityName=".MainActivity" />
 
-        <activity android:name="com.scanlibrary.ScanActivity" />
+        <activity android:name="io.github.isidoreous.gscanner.GScannerActivity" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
