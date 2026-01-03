@@ -210,4 +210,84 @@ public class MainActivity extends AppCompatActivity {
         return image;
     }
 
-    private Bitmap applyGrayscale
+    private Bitmap applyGrayscale(Bitmap bmp) {
+        Bitmap result = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(result);
+        Paint paint = new Paint();
+        ColorMatrix cm = new ColorMatrix();
+        cm.setSaturation(0);
+        paint.setColorFilter(new ColorMatrixColorFilter(cm));
+        c.drawBitmap(bmp, 0, 0, paint);
+        return result;
+    }
+
+    private void showNamingDialog() {
+        final EditText input = new EditText(this);
+        input.setHint("Enter file name");
+        FrameLayout container = new FrameLayout(this);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(-1, -2);
+        params.setMargins(50, 20, 50, 20);
+        input.setLayoutParams(params);
+        container.addView(input);
+        new AlertDialog.Builder(this).setTitle("Save PDF").setView(container)
+            .setPositiveButton("OK", (d, w) -> createPdf(input.getText().toString().trim()))
+            .setNegativeButton("Cancel", null).show();
+    }
+
+    private void createPdf(String fileName) {
+        if (imageList.isEmpty()) return;
+        Document document = new Document(PageSize.A4, 20, 20, 20, 20);
+        try {
+            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
+            if (!root.exists()) root.mkdirs();
+            String name = (fileName.isEmpty()) ? "Scan_" + System.currentTimeMillis() : fileName;
+            File pdfFile = new File(root, name + ".pdf");
+            PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
+            document.open();
+            for (Bitmap bmp : imageList) {
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                bmp.compress(Bitmap.CompressFormat.JPEG, 80, stream);
+                Image image = Image.getInstance(stream.toByteArray());
+                image.scaleToFit(PageSize.A4.getWidth() - 40, PageSize.A4.getHeight() - 40);
+                image.setAlignment(Image.ALIGN_CENTER);
+                document.add(image);
+                document.newPage();
+            }
+            document.close();
+            Toast.makeText(this, "Saved to Scan2PDF folder", Toast.LENGTH_LONG).show();
+            sharePdf(pdfFile);
+            imageList.clear();
+            adapter.notifyDataSetChanged();
+            btnSavePdf.setVisibility(View.GONE);
+        } catch (Exception e) {
+            Toast.makeText(this, "Error creating PDF", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void sharePdf(File file) {
+        try {
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", file);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("application/pdf");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "Share File"));
+        } catch (Exception e) { }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(0, 1, 0, "About");
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == 1) {
+            new AlertDialog.Builder(this).setTitle("Scan2PDF")
+                .setMessage("Developer: Hamed Shabani Pour")
+                .setPositiveButton("OK", null).show();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+}
