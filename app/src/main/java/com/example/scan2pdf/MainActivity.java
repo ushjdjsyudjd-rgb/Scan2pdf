@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
@@ -35,6 +36,7 @@ import com.itextpdf.text.pdf.PdfWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -47,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private List<Bitmap> imageList = new ArrayList<>();
     private ImageAdapter adapter;
     private ExtendedFloatingActionButton btnSavePdf;
+    private String currentPhotoPath; // ذخیره مسیر عکس اصلی
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,8 +111,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionAndOpen() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, PERMISSION_CODE);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.CAMERA, 
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            }, PERMISSION_CODE);
         } else {
             openCamera();
         }
@@ -118,22 +125,71 @@ public class MainActivity extends AppCompatActivity {
     private void openCamera() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+            } catch (IOException ex) {
+                Toast.makeText(this, "خطا در ایجاد فایل", Toast.LENGTH_SHORT).show();
+            }
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        "com.example.scan2pdf.provider",
+                        photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            }
         }
+    }
+
+    private File createImageFile() throws IOException {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(imageFileName, ".jpg", storageDir);
+        currentPhotoPath = image.getAbsolutePath();
+        return image;
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK && data != null) {
-            Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            // خواندن عکس از مسیر ذخیره شده با کیفیت اصلی
+            Bitmap bitmap = decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024);
             if (bitmap != null) {
                 Bitmap grayBitmap = applyGrayscale(bitmap);
                 imageList.add(grayBitmap);
                 adapter.notifyDataSetChanged();
                 btnSavePdf.setVisibility(View.VISIBLE);
+                
+                // پاک کردن فایل موقت برای اشغال نشدن حافظه
+                new File(currentPhotoPath).delete();
             }
         }
+    }
+
+    // متد بهینه‌سازی برای جلوگیری از کرش و حفظ کیفیت
+    private Bitmap decodeSampledBitmapFromFile(String path, int reqWidth, int reqHeight) {
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, options);
+        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+        options.inJustDecodeBounds = false;
+        return BitmapFactory.decodeFile(path, options);
+    }
+
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+        if (height > reqHeight || width > reqWidth) {
+            final int halfHeight = height / 2;
+            final int halfWidth = width / 2;
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+        return inSampleSize;
     }
 
     private Bitmap applyGrayscale(Bitmap bmp) {
@@ -150,20 +206,17 @@ public class MainActivity extends AppCompatActivity {
     private void showNamingDialog() {
         final EditText input = new EditText(this);
         input.setHint("مثلاً: صورتجلسه_اداری");
-        
-        // ایجاد حاشیه برای متن داخل دیالوگ
         FrameLayout container = new FrameLayout(this);
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.leftMargin = getResources().getDimensionPixelSize(android.R.dimen.app_icon_size) / 2;
-        params.rightMargin = params.leftMargin;
+        params.leftMargin = 50;
+        params.rightMargin = 50;
         input.setLayoutParams(params);
         container.addView(input);
 
         new AlertDialog.Builder(this)
             .setTitle("نام‌گذاری فایل PDF")
-            .setMessage("یک نام برای ذخیره فایل انتخاب کنید:")
             .setView(container)
             .setPositiveButton("تایید و اشتراک", (dialog, which) -> {
                 createPdf(input.getText().toString().trim());
@@ -176,6 +229,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             String timeStamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date());
             File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
+            if (!root.exists()) root.mkdirs();
+            
             File subFolder = new File(root, timeStamp);
             if (!subFolder.exists()) subFolder.mkdirs();
 
@@ -187,7 +242,8 @@ public class MainActivity extends AppCompatActivity {
 
             for (Bitmap bmp : imageList) {
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                bmp.compress(Bitmap.CompressFormat.JPEG, 90, stream);
+                // استفاده از کیفیت 100 برای خروجی PDF
+                bmp.compress(Bitmap.CompressFormat.JPEG, 100, stream);
                 Image image = Image.getInstance(stream.toByteArray());
                 image.scaleToFit(PageSize.A4.getWidth() - 40, PageSize.A4.getHeight() - 40);
                 image.setAlignment(Image.ALIGN_CENTER);
@@ -196,7 +252,7 @@ public class MainActivity extends AppCompatActivity {
             }
             document.close();
             
-            Toast.makeText(this, "فایل با موفقیت ساخته شد", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "فایل با کیفیت بالا ساخته شد", Toast.LENGTH_LONG).show();
             sharePdf(pdfFile);
             
             imageList.clear();
@@ -215,9 +271,6 @@ public class MainActivity extends AppCompatActivity {
             intent.setType("application/pdf");
             intent.putExtra(Intent.EXTRA_STREAM, uri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(intent, "ارسال فایل اسکن شده..."));
+            startActivity(Intent.createChooser(intent, "ارسال فایل..."));
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در اشتراک‌گذاری", Toast.LENGTH_SHORT).show();
-        }
-    }
-}
+            Toast.makeText(this, "خطا در اشت
