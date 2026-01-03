@@ -26,6 +26,10 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".ArchiveActivity" 
+            android:label="اسکن‌های قبلی"
+            android:parentActivityName=".MainActivity" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.example.scan2pdf.provider"
