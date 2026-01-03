@@ -36,9 +36,9 @@ import com.itextpdf.text.pdf.PdfCopy;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
 
-// استفاده از کتابخانه جایگزین برای حل خطای کامپایل
-import com.scanlibrary.ScanActivity;
-import com.scanlibrary.ScanConstants;
+// ایمپورت‌های کتابخانه جدید برای رفع خطای 401
+import io.github.isidoreous.gscanner.GScanner;
+import io.github.isidoreous.gscanner.GScannerActivity;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -128,7 +128,6 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                // ارسال مستقیم عکس دوربین به اسکنر هوشمند
                 startCrop(currentPhotoPath);
             } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
                 if (data.getClipData() != null) {
@@ -136,13 +135,11 @@ public class MainActivity extends AppCompatActivity {
                         handleGalleryUri(data.getClipData().getItemAt(i).getUri());
                 } else if (data.getData() != null) handleGalleryUri(data.getData());
             } else if (requestCode == REQUEST_CROP_IMAGE && data != null) {
-                // دریافت خروجی نهایی اسکنر
-                try {
-                    Uri uri = data.getExtras().getParcelable(ScanConstants.SCANNED_RESULT);
-                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+                // دریافت نتیجه از اسکنر جدید
+                String resultPath = data.getStringExtra(GScannerActivity.RESULT_PATH);
+                if (resultPath != null) {
+                    Bitmap bitmap = BitmapFactory.decodeFile(resultPath);
                     if (bitmap != null) processBitmap(bitmap);
-                } catch (IOException e) {
-                    Toast.makeText(this, "خطا در پردازش تصویر", Toast.LENGTH_SHORT).show();
                 }
             } else if (requestCode == REQUEST_PDF_MERGE_PICK && data != null) {
                 handlePdfMerge(data);
@@ -151,12 +148,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startCrop(String path) {
-        // آماده‌سازی اسکنر هوشمند (ScanLibrary)
-        Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", new File(path));
-        Intent intent = new Intent(this, ScanActivity.class);
-        intent.putExtra(ScanConstants.OPEN_INTENT_PREFERENCE, ScanConstants.OPEN_CAMERA);
-        intent.putExtra(ScanConstants.SELECTED_BITMAP, uri.toString());
-        startActivityForResult(intent, REQUEST_CROP_IMAGE);
+        // فراخوانی اسکنر جدید با مسیر تصویر
+        GScanner.with(this)
+                .setPath(path)
+                .setRequestCode(REQUEST_CROP_IMAGE)
+                .start();
     }
 
     private void handleGalleryUri(Uri uri) {
