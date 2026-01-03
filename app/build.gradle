@@ -29,6 +29,7 @@ android {
             minifyEnabled true
             shrinkResources true
             signingConfig signingConfigs.release
+            
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 
                           (file('proguard-rules.pro').exists() ? 'proguard-rules.pro' : 'proguard-rules-missing.pro')
             
@@ -79,8 +80,10 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
-    // کتابخانه تشخیص لبه و اسکن
-    implementation 'com.github.pqpo:SmartCropper:v2.1.3'
+    // کتابخانه تشخیص لبه و اسکن - با قابلیت transitive برای حل خطای شناسایی پکیج
+    implementation('com.github.pqpo:SmartCropper:v2.1.3') {
+        transitive = true
+    }
 
     testImplementation 'junit:junit:4.13.2'
 }
