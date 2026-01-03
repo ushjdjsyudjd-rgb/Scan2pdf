@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_GALLERY_PICK = 2;
     private static final int REQUEST_WORD_PICK = 3;
     private static final int REQUEST_PDF_MERGE_PICK = 4;
+    private static final int REQUEST_OCR_PICK = 5;
     private static final int PERMISSION_CODE = 100;
     
     private List<Bitmap> imageList = new ArrayList<>();
@@ -80,6 +81,7 @@ public class MainActivity extends AppCompatActivity {
         MaterialCardView cardWordToPdf = findViewById(R.id.cardWordToPdf);
         MaterialCardView cardMergePdf = findViewById(R.id.cardMergePdf);
         MaterialCardView cardArchive = findViewById(R.id.cardArchive);
+        MaterialCardView cardOcr = findViewById(R.id.cardOcr); // دکمه جدید OCR
 
         adapter = new ImageAdapter(imageList, position -> {
             new AlertDialog.Builder(this)
@@ -96,11 +98,13 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3)); 
         recyclerView.setAdapter(adapter);
 
+        // Click Listeners
         if (cardCapture != null) cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
         if (cardGallery != null) cardGallery.setOnClickListener(v -> openGallery());
         if (cardWordToPdf != null) cardWordToPdf.setOnClickListener(v -> openFilePicker("application/vnd.openxmlformats-officedocument.wordprocessingml.document", REQUEST_WORD_PICK));
         if (cardMergePdf != null) cardMergePdf.setOnClickListener(v -> openFilePicker("application/pdf", REQUEST_PDF_MERGE_PICK));
         if (cardArchive != null) cardArchive.setOnClickListener(v -> startActivity(new Intent(this, ArchiveActivity.class)));
+        if (cardOcr != null) cardOcr.setOnClickListener(v -> openFilePicker("application/pdf", REQUEST_OCR_PICK));
 
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
     }
@@ -147,11 +151,8 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                // دوربین برای حالت EXTRA_OUTPUT دیتای برگشتی ندارد، مستقیماً از فایل می‌خوانیم
                 Bitmap bitmap = decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024);
-                if (bitmap != null) {
-                    processBitmap(bitmap);
-                }
+                if (bitmap != null) processBitmap(bitmap);
             } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
                 if (data.getClipData() != null) {
                     for (int i = 0; i < data.getClipData().getItemCount(); i++) 
@@ -160,13 +161,19 @@ public class MainActivity extends AppCompatActivity {
             } else if (requestCode == REQUEST_WORD_PICK && data != null) {
                 convertWordToPdf(data.getData());
             } else if (requestCode == REQUEST_PDF_MERGE_PICK && data != null) {
-                List<Uri> pdfUris = new ArrayList<>();
-                if (data.getClipData() != null) {
-                    for (int i = 0; i < data.getClipData().getItemCount(); i++) pdfUris.add(data.getClipData().getItemAt(i).getUri());
-                } else if (data.getData() != null) pdfUris.add(data.getData());
-                mergePdfFiles(pdfUris);
+                handlePdfMerge(data);
+            } else if (requestCode == REQUEST_OCR_PICK && data != null) {
+                performOcrOnPdf(data.getData());
             }
         }
+    }
+
+    private void handlePdfMerge(Intent data) {
+        List<Uri> pdfUris = new ArrayList<>();
+        if (data.getClipData() != null) {
+            for (int i = 0; i < data.getClipData().getItemCount(); i++) pdfUris.add(data.getClipData().getItemAt(i).getUri());
+        } else if (data.getData() != null) pdfUris.add(data.getData());
+        mergePdfFiles(pdfUris);
     }
 
     private void mergePdfFiles(List<Uri> uris) {
@@ -174,7 +181,6 @@ public class MainActivity extends AppCompatActivity {
             File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
             if (!root.exists()) root.mkdirs();
             File mergedFile = new File(root, "Merged_" + System.currentTimeMillis() + ".pdf");
-            
             Document document = new Document();
             PdfCopy copy = new PdfCopy(document, new FileOutputStream(mergedFile));
             document.open();
@@ -186,70 +192,50 @@ public class MainActivity extends AppCompatActivity {
                 is.close();
             }
             document.close();
-            Toast.makeText(this, "ادغام موفقیت‌آمیز بود", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "ادغام با موفقیت در پوشه دانلود انجام شد", Toast.LENGTH_SHORT).show();
             sharePdf(mergedFile);
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در ادغام PDF", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "خطا در ادغام فایل‌ها", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void convertWordToPdf(Uri wordUri) {
-    try {
-        // استفاده از کلاس کمکی برای خواندن امن فایل در اندروید
-        InputStream is = getContentResolver().openInputStream(wordUri);
-        XWPFDocument doc = new XWPFDocument(is);
-        
-        File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
-        if (!root.exists()) root.mkdirs();
-        File pdfFile = new File(root, "Word_" + System.currentTimeMillis() + ".pdf");
-        
-        Document document = new Document();
-        PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
-        document.open();
-
-        // استخراج پاراگراف‌ها
-        List<XWPFParagraph> paragraphs = doc.getParagraphs();
-        for (XWPFParagraph p : paragraphs) {
-            document.add(new Paragraph(p.getText()));
-        }
-
-        document.close();
-        doc.close();
-        is.close();
-        
-        runOnUiThread(() -> {
-            Toast.makeText(this, "تبدیل ورد با موفقیت انجام شد", Toast.LENGTH_SHORT).show();
-            sharePdf(pdfFile);
-        });
-    } catch (Exception e) {
-        e.printStackTrace();
-        runOnUiThread(() -> Toast.makeText(this, "خطا در ورد: فایل سنگین است یا فرمت استاندارد نیست", Toast.LENGTH_LONG).show();
+        new Thread(() -> {
+            try {
+                InputStream is = getContentResolver().openInputStream(wordUri);
+                XWPFDocument doc = new XWPFDocument(is);
+                File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
+                if (!root.exists()) root.mkdirs();
+                File pdfFile = new File(root, "Word_" + System.currentTimeMillis() + ".pdf");
+                
+                Document document = new Document();
+                PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
+                document.open();
+                for (XWPFParagraph p : doc.getParagraphs()) {
+                    document.add(new Paragraph(p.getText()));
+                }
+                document.close();
+                doc.close();
+                is.close();
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "تبدیل ورد انجام شد", Toast.LENGTH_SHORT).show();
+                    sharePdf(pdfFile);
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "خطا در پردازش ورد: احتمالاً فایل سنگین است", Toast.LENGTH_LONG).show());
+            }
+        }).start();
     }
-}
-
 
     private void performOcrOnPdf(Uri pdfUri) {
-    Toast.makeText(this, "در حال پردازش OCR... لطفا شکیبا باشید", Toast.LENGTH_LONG).show();
-    // در اینجا نیاز به کتابخانه ای مثل Android PdfRenderer داریم
-    // فرآیند OCR سنگین است و باید در ترد (Thread) جداگانه انجام شود
-    new Thread(() -> {
-        try {
-            // ۱. تبدیل صفحات پی‌دی‌اف به عکس (بیت‌مپ)
-            // ۲. ارسال بیت‌مپ به موتور Tesseract
-            // ۳. دریافت متن و نمایش در یک دیالوگ
-            
-            // کد نمونه برای نمایش نتیجه
-            runOnUiThread(() -> {
-                new AlertDialog.Builder(this)
-                    .setTitle("متن استخراج شده")
-                    .setMessage("قابلیت OCR نیاز به دانلود دیتا فایل (eng.traineddata) دارد. آیا می‌خواهید دانلود شود؟")
-                    .setPositiveButton("بله", null).show();
-            });
-        } catch (Exception e) {
-            runOnUiThread(() -> Toast.makeText(this, "خطا در پردازش OCR", Toast.LENGTH_SHORT).show());
-        }
-    }).start();
-}
+        // فعلاً نمایش پیام در حال توسعه برای OCR
+        new AlertDialog.Builder(this)
+            .setTitle("قابلیت OCR")
+            .setMessage("این قابلیت برای تشخیص متن به فایل‌های زبان نیاز دارد. آیا پردازش آزمایشی شروع شود؟")
+            .setPositiveButton("بله", (d, w) -> Toast.makeText(this, "در حال تحلیل متن...", Toast.LENGTH_LONG).show())
+            .setNegativeButton("لغو", null).show();
+    }
+
     private void handleGalleryUri(Uri uri) {
         try {
             InputStream is = getContentResolver().openInputStream(uri);
@@ -263,7 +249,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void processBitmap(Bitmap bitmap) {
         if (bitmap != null) {
-            // اعمال فیلتر سیاه و سفید برای اسکن بهتر
             Bitmap gray = applyGrayscale(bitmap);
             imageList.add(gray);
             adapter.notifyDataSetChanged();
@@ -273,8 +258,7 @@ public class MainActivity extends AppCompatActivity {
 
     private File createImageFile() throws IOException {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", storageDir);
+        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", getExternalFilesDir(Environment.DIRECTORY_PICTURES));
         currentPhotoPath = image.getAbsolutePath();
         return image;
     }
@@ -342,13 +326,13 @@ public class MainActivity extends AppCompatActivity {
                 document.newPage();
             }
             document.close();
-            Toast.makeText(this, "ذخیره شد در دانلودها", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "در پوشه دانلود ذخیره شد", Toast.LENGTH_LONG).show();
             sharePdf(pdfFile);
             imageList.clear();
             adapter.notifyDataSetChanged();
             btnSavePdf.setVisibility(View.GONE);
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در ساخت PDF", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "خطا در تولید فایل", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -359,27 +343,25 @@ public class MainActivity extends AppCompatActivity {
             intent.setType("application/pdf");
             intent.putExtra(Intent.EXTRA_STREAM, uri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(intent, "ارسال فایل..."));
+            startActivity(Intent.createChooser(intent, "اشتراک گذاری فایل"));
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در اشتراک‌گذاری", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "خطا در باز کردن فایل", Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "درباره سازنده").setIcon(android.R.drawable.ic_menu_info_details);
+        menu.add(0, 1, 0, "درباره ما");
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == 1) showAboutDialog();
+        if (item.getItemId() == 1) {
+            new AlertDialog.Builder(this).setTitle("Scan2PDF")
+                .setMessage("توسعه دهنده: حامد شعبانی پور")
+                .setPositiveButton("تایید", null).show();
+        }
         return super.onOptionsItemSelected(item);
-    }
-
-    private void showAboutDialog() {
-        new AlertDialog.Builder(this).setTitle("درباره توسعه‌دهنده")
-            .setMessage("سازنده: حامد شعبانی پور\nایمیل: ushjdjsyudjd@gmail.com")
-            .setPositiveButton("متوجه شدم", null).show();
     }
 }
