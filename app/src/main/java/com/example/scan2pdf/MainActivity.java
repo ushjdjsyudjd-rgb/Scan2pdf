@@ -37,6 +37,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -45,7 +46,9 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int REQUEST_GALLERY_PICK = 2;
     private static final int PERMISSION_CODE = 100;
+    
     private List<Bitmap> imageList = new ArrayList<>();
     private ImageAdapter adapter;
     private ExtendedFloatingActionButton btnSavePdf;
@@ -56,20 +59,20 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // تنظیم نوار ابزار
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("پی دی اف ساز حرفه‌ای");
         }
 
-        // شناسایی ویوها
         btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         MaterialCardView cardCapture = findViewById(R.id.cardCapture);
         MaterialCardView cardArchive = findViewById(R.id.cardArchive);
+        
+        // پیدا کردن کارت گالری (مطمئن شو در xml آیدی آن cardGallery باشد)
+        MaterialCardView cardGallery = findViewById(R.id.cardGallery);
 
-        // تنظیم لیست پیش‌نمایش
         adapter = new ImageAdapter(imageList, position -> {
             new AlertDialog.Builder(this)
                 .setTitle("حذف صفحه")
@@ -82,55 +85,30 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton("خیر", null).show();
         });
 
-        recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+        recyclerView.setLayoutManager(new GridLayoutManager(this, 3)); // ۳ ستونه برای ظاهر بهتر
         recyclerView.setAdapter(adapter);
 
-        // عملکرد کارت اسکن با دوربین
-        cardCapture.setOnClickListener(v -> checkPermissionAndOpen());
+        // دکمه دوربین
+        cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
 
-        // عملکرد کارت مشاهده آرشیو
-        cardArchive.setOnClickListener(v -> {
-            Intent intent = new Intent(this, ArchiveActivity.class);
-            startActivity(intent);
-        });
+        // دکمه گالری
+        if (cardGallery != null) {
+            cardGallery.setOnClickListener(v -> checkPermissionAndOpen(false));
+        }
 
-        // عملکرد دکمه نهایی سازی PDF
+        // دکمه آرشیو
+        cardArchive.setOnClickListener(v -> startActivity(new Intent(this, ArchiveActivity.class)));
+
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "درباره سازنده").setIcon(android.R.drawable.ic_menu_info_details);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == 1) {
-            showAboutDialog();
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    private void showAboutDialog() {
-        new AlertDialog.Builder(this)
-            .setTitle("درباره توسعه‌دهنده")
-            .setMessage("این نرم‌افزار توسط حامد شعبانی پور طراحی و توسعه یافته است.\n\n" +
-                        "سازنده: حامد شعبانی پور\n" +
-                        "ایمیل: ushjdjsyudjd@gmail.com\n" +
-                        "وبسایت: v-scan2pdf.ir\n\n" +
-                        "نسخه: 1.0.0")
-            .setPositiveButton("متوجه شدم", null)
-            .show();
-    }
-
-    private void checkPermissionAndOpen() {
+    private void checkPermissionAndOpen(boolean isCamera) {
+        String[] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE};
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE
-            }, PERMISSION_CODE);
+            ActivityCompat.requestPermissions(this, permissions, PERMISSION_CODE);
         } else {
-            openCamera();
+            if (isCamera) openCamera();
+            else openGallery();
         }
     }
 
@@ -138,11 +116,55 @@ public class MainActivity extends AppCompatActivity {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         File photoFile = null;
         try { photoFile = createImageFile(); } catch (IOException ignored) {}
-        
         if (photoFile != null) {
             Uri photoURI = FileProvider.getUriForFile(this, getPackageName() + ".provider", photoFile);
             takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
             startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+        }
+    }
+
+    private void openGallery() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*");
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        startActivityForResult(Intent.createChooser(intent, "انتخاب تصاویر"), REQUEST_GALLERY_PICK);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK) {
+            if (requestCode == REQUEST_IMAGE_CAPTURE) {
+                processBitmap(decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024));
+                new File(currentPhotoPath).delete();
+            } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
+                if (data.getClipData() != null) {
+                    int count = data.getClipData().getItemCount();
+                    for (int i = 0; i < count; i++) {
+                        handleGalleryUri(data.getClipData().getItemAt(i).getUri());
+                    }
+                } else if (data.getData() != null) {
+                    handleGalleryUri(data.getData());
+                }
+            }
+        }
+    }
+
+    private void handleGalleryUri(Uri uri) {
+        try {
+            InputStream is = getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(is);
+            processBitmap(bitmap);
+        } catch (Exception e) {
+            Toast.makeText(this, "خطا در بارگذاری تصویر", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void processBitmap(Bitmap bitmap) {
+        if (bitmap != null) {
+            imageList.add(applyGrayscale(bitmap));
+            adapter.notifyDataSetChanged();
+            btnSavePdf.setVisibility(View.VISIBLE);
         }
     }
 
@@ -152,20 +174,6 @@ public class MainActivity extends AppCompatActivity {
         File image = File.createTempFile("IMG_" + timeStamp, ".jpg", storageDir);
         currentPhotoPath = image.getAbsolutePath();
         return image;
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            Bitmap bitmap = decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024);
-            if (bitmap != null) {
-                imageList.add(applyGrayscale(bitmap));
-                adapter.notifyDataSetChanged();
-                btnSavePdf.setVisibility(View.VISIBLE);
-                new File(currentPhotoPath).delete();
-            }
-        }
     }
 
     private Bitmap decodeSampledBitmapFromFile(String path, int reqWidth, int reqHeight) {
@@ -192,73 +200,3 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap applyGrayscale(Bitmap bmp) {
         Bitmap result = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(result);
-        Paint paint = new Paint();
-        ColorMatrix cm = new ColorMatrix();
-        cm.setSaturation(0);
-        paint.setColorFilter(new ColorMatrixColorFilter(cm));
-        c.drawBitmap(bmp, 0, 0, paint);
-        return result;
-    }
-
-    private void showNamingDialog() {
-        final EditText input = new EditText(this);
-        input.setHint("نام فایل را وارد کنید");
-        FrameLayout container = new FrameLayout(this);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(-1, -2);
-        params.setMargins(50, 20, 50, 20);
-        input.setLayoutParams(params);
-        container.addView(input);
-
-        new AlertDialog.Builder(this)
-            .setTitle("ذخیره PDF")
-            .setView(container)
-            .setPositiveButton("تایید", (dialog, which) -> createPdf(input.getText().toString().trim()))
-            .setNegativeButton("لغو", null).show();
-    }
-
-    private void createPdf(String fileName) {
-        Document document = new Document(PageSize.A4, 20, 20, 20, 20);
-        try {
-            String timeDir = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date());
-            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
-            if (!root.exists()) root.mkdirs();
-            
-            String name = (fileName.isEmpty()) ? "Scan_" + timeDir : fileName;
-            File pdfFile = new File(root, name + ".pdf");
-            
-            PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
-            document.open();
-            for (Bitmap bmp : imageList) {
-                ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                bmp.compress(Bitmap.CompressFormat.JPEG, 100, stream);
-                Image image = Image.getInstance(stream.toByteArray());
-                image.scaleToFit(PageSize.A4.getWidth() - 40, PageSize.A4.getHeight() - 40);
-                image.setAlignment(Image.ALIGN_CENTER);
-                document.add(image);
-                document.newPage();
-            }
-            document.close();
-            Toast.makeText(this, "ذخیره شد در دانلودها", Toast.LENGTH_LONG).show();
-            sharePdf(pdfFile);
-            
-            imageList.clear();
-            adapter.notifyDataSetChanged();
-            btnSavePdf.setVisibility(View.GONE);
-        } catch (Exception e) {
-            Toast.makeText(this, "خطا در ساخت PDF", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void sharePdf(File file) {
-        try {
-            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", file);
-            Intent intent = new Intent(Intent.ACTION_SEND);
-            intent.setType("application/pdf");
-            intent.putExtra(Intent.EXTRA_STREAM, uri);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(intent, "ارسال فایل..."));
-        } catch (Exception e) {
-            Toast.makeText(this, "خطا در اشتراک‌گذاری", Toast.LENGTH_SHORT).show();
-        }
-    }
-}
