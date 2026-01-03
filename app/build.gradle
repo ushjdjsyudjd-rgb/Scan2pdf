@@ -12,21 +12,16 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
-        
         multiDexEnabled true
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
             minifyEnabled true
-            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
-            // برای اینکه بیلد در گیت‌هاب سبک‌تر انجام شود، مینیفای را اینجا هم فعال می‌کنیم
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled false
         }
     }
     
@@ -35,7 +30,8 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    packagingOptions {
+    // اصلاح این بخش برای جلوگیری از خطای گریدل 9
+    packaging {
         resources {
             excludes += [
                 'META-INF/DEPENDENCIES',
@@ -44,8 +40,7 @@ android {
                 'META-INF/NOTICE.txt',
                 'META-INF/LICENSE.txt',
                 'META-INF/AL2.0',
-                'META-INF/LGPL2.1',
-                'META-INF/INDEX.LIST'
+                'META-INF/LGPL2.1'
             ]
         }
     }
@@ -58,10 +53,10 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.multidex:multidex:2.0.1'
     
-    // iText برای PDF
+    // iText PDF
     implementation 'com.itextpdf:itextpdf:5.5.13.3'
     
-    // Apache POI - فقط نسخه‌های اصلی (کتابخانه اضافی حذف شد)
+    // Apache POI Word
     implementation 'org.apache.poi:poi:5.2.3'
     implementation 'org.apache.poi:poi-ooxml:5.2.3'
 
@@ -69,6 +64,4 @@ dependencies {
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
