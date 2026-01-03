@@ -24,8 +24,9 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
-            // فعال کردن این بخش به بیلد کمک می‌کند تا سبک‌تر شود
-            minifyEnabled false
+            // برای اینکه بیلد در گیت‌هاب سبک‌تر انجام شود، مینیفای را اینجا هم فعال می‌کنیم
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     
@@ -44,8 +45,7 @@ android {
                 'META-INF/LICENSE.txt',
                 'META-INF/AL2.0',
                 'META-INF/LGPL2.1',
-                'META-INF/INDEX.LIST',
-                'about_files/LICENSE_601.txt'
+                'META-INF/INDEX.LIST'
             ]
         }
     }
@@ -61,11 +61,7 @@ dependencies {
     // iText برای PDF
     implementation 'com.itextpdf:itextpdf:5.5.13.3'
     
-    // استفاده از نسخه بسیار سبک و بهینه شده Apache POI برای اندروید
-    // این نسخه مشکل حافظه را حل می‌کند
-    implementation 'com.github.worker8:tourguide:2.0.0' // یک کتابخانه کمکی (اختیاری)
-    
-    // کتابخانه‌های اصلی ورد (نسخه بهینه)
+    // Apache POI - فقط نسخه‌های اصلی (کتابخانه اضافی حذف شد)
     implementation 'org.apache.poi:poi:5.2.3'
     implementation 'org.apache.poi:poi-ooxml:5.2.3'
 
