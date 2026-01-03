@@ -15,8 +15,7 @@
             android:layout_height="?attr/actionBarSize"
             android:background="#FFFFFF"
             app:title="Scan2PDF Pro"
-            app:titleTextColor="#2196F3"
-            app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+            app:titleTextColor="#2196F3" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -33,8 +32,12 @@
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="32dp"
         android:text="اسکن فایل جدید"
-        style="@style/GlassButton"
-        app:icon="@android:drawable/ic_menu_camera" />
+        android:textColor="#2196F3"
+        app:icon="@android:drawable/ic_menu_camera"
+        app:iconTint="#2196F3"
+        app:strokeColor="#2196F3"
+        app:strokeWidth="1dp"
+        app:backgroundTint="#80FFFFFF" />
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/btnSavePdf"
@@ -44,9 +47,9 @@
         android:layout_margin="16dp"
         android:text="تبدیل به PDF"
         android:visibility="gone"
+        app:icon="@android:drawable/ic_menu_save"
         app:backgroundTint="#4CAF50"
         android:textColor="#FFFFFF"
-        app:icon="@android:drawable/ic_menu_save"
         app:iconTint="#FFFFFF"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
