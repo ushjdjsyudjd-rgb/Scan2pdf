@@ -1,2 +1,19 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // این خط دقیقاً همان چیزی است که کم داشتی و باعث خطا شده بود
+        maven { url 'https://jitpack.io' }
+    }
+}
+
 rootProject.name = "Scan2PDF"
 include ':app'
