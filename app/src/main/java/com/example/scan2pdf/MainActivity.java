@@ -35,6 +35,8 @@ import com.itextpdf.text.PageSize;
 import com.itextpdf.text.pdf.PdfCopy;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
+import com.pqpo.smartcropperlib.SmartCropper; // اضافه شد
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -49,6 +51,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_GALLERY_PICK = 2;
+    private static final int REQUEST_CROP_IMAGE = 3; // کد برای اسکنر
     private static final int REQUEST_PDF_MERGE_PICK = 4;
     private static final int PERMISSION_CODE = 100;
     
@@ -61,6 +64,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // مقداردهی اولیه اسکنر
+        SmartCropper.build(this);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -99,25 +105,6 @@ public class MainActivity extends AppCompatActivity {
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
     }
 
-    private void openFilePicker(String mimeType, int requestCode) {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType(mimeType);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        if (requestCode == REQUEST_PDF_MERGE_PICK) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        startActivityForResult(Intent.createChooser(intent, "Select File"), requestCode);
-    }
-
-    private void checkPermissionAndOpen(boolean isCamera) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE
-            }, PERMISSION_CODE);
-        } else {
-            if (isCamera) openCamera();
-            else openGallery();
-        }
-    }
-
     private void openCamera() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         File photoFile = null;
@@ -132,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("image/*");
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); // قابلیت انتخاب چندتایی حفظ شد
         startActivityForResult(Intent.createChooser(intent, "Select Images"), REQUEST_GALLERY_PICK);
     }
 
@@ -141,48 +128,29 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath);
-                if (bitmap != null) processBitmap(bitmap);
+                // بعد از گرفتن عکس با دوربین، به اسکنر برو
+                startCrop(currentPhotoPath);
             } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
+                // انتخاب چندتایی از گالری مطابق کد خودت
                 if (data.getClipData() != null) {
                     for (int i = 0; i < data.getClipData().getItemCount(); i++) 
                         handleGalleryUri(data.getClipData().getItemAt(i).getUri());
                 } else if (data.getData() != null) handleGalleryUri(data.getData());
+            } else if (requestCode == REQUEST_CROP_IMAGE) {
+                // نتیجه اسکنر هوشمند
+                Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath);
+                if (bitmap != null) processBitmap(bitmap);
             } else if (requestCode == REQUEST_PDF_MERGE_PICK && data != null) {
                 handlePdfMerge(data);
             }
         }
     }
 
-    private void handlePdfMerge(Intent data) {
-        List<Uri> pdfUris = new ArrayList<>();
-        if (data.getClipData() != null) {
-            for (int i = 0; i < data.getClipData().getItemCount(); i++) pdfUris.add(data.getClipData().getItemAt(i).getUri());
-        } else if (data.getData() != null) pdfUris.add(data.getData());
-        mergePdfFiles(pdfUris);
-    }
-
-    private void mergePdfFiles(List<Uri> uris) {
-        try {
-            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
-            if (!root.exists()) root.mkdirs();
-            File mergedFile = new File(root, "Merged_" + System.currentTimeMillis() + ".pdf");
-            Document document = new Document();
-            PdfCopy copy = new PdfCopy(document, new FileOutputStream(mergedFile));
-            document.open();
-            for (Uri uri : uris) {
-                InputStream is = getContentResolver().openInputStream(uri);
-                PdfReader reader = new PdfReader(is);
-                copy.addDocument(reader);
-                reader.close();
-                is.close();
-            }
-            document.close();
-            Toast.makeText(this, "Merged successfully in Downloads/Scan2PDF", Toast.LENGTH_SHORT).show();
-            sharePdf(mergedFile);
-        } catch (Exception e) {
-            Toast.makeText(this, "Error merging files", Toast.LENGTH_SHORT).show();
-        }
+    private void startCrop(String path) {
+        Intent intent = new Intent(this, com.pqpo.smartcropperlib.view.CropActivity.class);
+        intent.putExtra("extra_source_file", path);
+        intent.putExtra("extra_save_file", path);
+        startActivityForResult(intent, REQUEST_CROP_IMAGE);
     }
 
     private void handleGalleryUri(Uri uri) {
@@ -203,13 +171,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private File createImageFile() throws IOException {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", getExternalFilesDir(Environment.DIRECTORY_PICTURES));
-        currentPhotoPath = image.getAbsolutePath();
-        return image;
-    }
-
     private Bitmap applyGrayscale(Bitmap bmp) {
         Bitmap result = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(result);
@@ -219,6 +180,32 @@ public class MainActivity extends AppCompatActivity {
         paint.setColorFilter(new ColorMatrixColorFilter(cm));
         c.drawBitmap(bmp, 0, 0, paint);
         return result;
+    }
+
+    private void openFilePicker(String mimeType, int requestCode) {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType(mimeType);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        if (requestCode == REQUEST_PDF_MERGE_PICK) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        startActivityForResult(Intent.createChooser(intent, "Select File"), requestCode);
+    }
+
+    private void checkPermissionAndOpen(boolean isCamera) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE
+            }, PERMISSION_CODE);
+        } else {
+            if (isCamera) openCamera();
+            else openGallery();
+        }
+    }
+
+    private File createImageFile() throws IOException {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", getExternalFilesDir(Environment.DIRECTORY_PICTURES));
+        currentPhotoPath = image.getAbsolutePath();
+        return image;
     }
 
     private void showNamingDialog() {
@@ -273,6 +260,37 @@ public class MainActivity extends AppCompatActivity {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(intent, "Share File"));
         } catch (Exception e) { }
+    }
+
+    private void handlePdfMerge(Intent data) {
+        List<Uri> pdfUris = new ArrayList<>();
+        if (data.getClipData() != null) {
+            for (int i = 0; i < data.getClipData().getItemCount(); i++) pdfUris.add(data.getClipData().getItemAt(i).getUri());
+        } else if (data.getData() != null) pdfUris.add(data.getData());
+        mergePdfFiles(pdfUris);
+    }
+
+    private void mergePdfFiles(List<Uri> uris) {
+        try {
+            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
+            if (!root.exists()) root.mkdirs();
+            File mergedFile = new File(root, "Merged_" + System.currentTimeMillis() + ".pdf");
+            Document document = new Document();
+            PdfCopy copy = new PdfCopy(document, new FileOutputStream(mergedFile));
+            document.open();
+            for (Uri uri : uris) {
+                InputStream is = getContentResolver().openInputStream(uri);
+                PdfReader reader = new PdfReader(is);
+                copy.addDocument(reader);
+                reader.close();
+                is.close();
+            }
+            document.close();
+            Toast.makeText(this, "Merged successfully in Downloads/Scan2PDF", Toast.LENGTH_SHORT).show();
+            sharePdf(mergedFile);
+        } catch (Exception e) {
+            Toast.makeText(this, "Error merging files", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
