@@ -1,8 +1,6 @@
 package com.example.scan2pdf;
 
-import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -21,8 +19,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -49,7 +45,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PDF_MERGE_PICK = 4;
-    private static final int PERMISSION_CODE = 100;
+    private static final int SCANNER_REQUEST_CODE = 1000;
     
     private List<Bitmap> imageList = new ArrayList<>();
     private ImageAdapter adapter;
@@ -99,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
 
         cardCapture.setOnClickListener(v -> startScanning());
-        cardGallery.setOnClickListener(v -> startScanning()); // اسکنر گوگل گالری هم دارد
+        cardGallery.setOnClickListener(v -> startScanning());
         cardMergePdf.setOnClickListener(v -> openFilePicker("application/pdf", REQUEST_PDF_MERGE_PICK));
         cardArchive.setOnClickListener(v -> startActivity(new Intent(this, ArchiveActivity.class)));
 
@@ -110,10 +106,13 @@ public class MainActivity extends AppCompatActivity {
         scanner.getStartScanIntent(this)
             .addOnSuccessListener(intentSender -> {
                 try {
-                    startIntentSenderForResult(intentSender, 1000, null, 0, 0, 0);
+                    startIntentSenderForResult(intentSender, SCANNER_REQUEST_CODE, null, 0, 0, 0);
                 } catch (Exception e) {
                     Toast.makeText(this, "خطا در اجرای اسکنر", Toast.LENGTH_SHORT).show();
                 }
+            })
+            .addOnFailureListener(e -> {
+                Toast.makeText(this, "خطای گوگل سرویس: " + e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
             });
     }
 
@@ -121,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
-            if (requestCode == 1000) {
+            if (requestCode == SCANNER_REQUEST_CODE) {
                 GmsDocumentScanningResult result = GmsDocumentScanningResult.fromActivityResultIntent(data);
                 if (result != null && result.getPages() != null) {
                     for (GmsDocumentScanningResult.Page page : result.getPages()) {
@@ -135,17 +134,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleUri(Uri uri) {
-        try {
-            InputStream is = getContentResolver().openInputStream(uri);
+        try (InputStream is = getContentResolver().openInputStream(uri)) {
             Bitmap bitmap = BitmapFactory.decodeStream(is);
             if (bitmap != null) {
                 Bitmap gray = applyGrayscale(bitmap);
                 imageList.add(gray);
-                adapter.notifyDataSetChanged();
-                btnSavePdf.setVisibility(View.VISIBLE);
+                runOnUiThread(() -> {
+                    adapter.notifyDataSetChanged();
+                    btnSavePdf.setVisibility(View.VISIBLE);
+                });
             }
-            is.close();
-        } catch (Exception e) { }
+        } catch (Exception e) {
+            Toast.makeText(this, "خطا در بارگذاری تصویر", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private Bitmap applyGrayscale(Bitmap bmp) {
@@ -238,11 +239,11 @@ public class MainActivity extends AppCompatActivity {
             PdfCopy copy = new PdfCopy(document, new FileOutputStream(mergedFile));
             document.open();
             for (Uri uri : uris) {
-                InputStream is = getContentResolver().openInputStream(uri);
-                PdfReader reader = new PdfReader(is);
-                copy.addDocument(reader);
-                reader.close();
-                is.close();
+                try (InputStream is = getContentResolver().openInputStream(uri)) {
+                    PdfReader reader = new PdfReader(is);
+                    copy.addDocument(reader);
+                    reader.close();
+                }
             }
             document.close();
             Toast.makeText(this, "Merged successfully in Downloads/Scan2PDF", Toast.LENGTH_SHORT).show();
