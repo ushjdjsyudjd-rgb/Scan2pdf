@@ -80,10 +80,8 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
-    // تغییر استراتژیک برای حل خطای Compile:
-    // استفاده از نسخه پایدار 2.1.1 بدون پیشوند v 
-    // این کار باعث می‌شود کدهای Java کتابخانه توسط Gradle شناسایی شوند.
-    implementation 'com.github.pqpo:SmartCropper:2.1.1'
+    // کتابخانه جایگزین معتبر و هماهنگ با اندروید 14
+    implementation 'com.github.jhansireddy:ScanLibrary:1.1'
 
     testImplementation 'junit:junit:4.13.2'
 }
