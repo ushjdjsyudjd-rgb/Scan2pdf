@@ -25,20 +25,22 @@ jobs:
         with:
           gradle-version: 8.5
 
-      # مرحله ساخت فایل کلید (Keystore) با استفاده از سکرت‌های تو
+      # مرحله ساخت فایل کلید (Keystore) - اصلاح شده با کوتیشن برای جلوگیری از خطا
       - name: Generate Keystore
         run: |
           if [ ! -f "app/${{ secrets.KEYSTORE_NAME }}" ]; then
-            keytool -genkey -v -keystore app/${{ secrets.KEYSTORE_NAME }} \
-            -alias ${{ secrets.ALIAS }} -keyalg RSA -keysize 2048 \
-            -validity 10000 -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
-            -keypass ${{ secrets.KEY_PASSWORD }} \
+            keytool -genkey -v -keystore "app/${{ secrets.KEYSTORE_NAME }}" \
+            -alias "${{ secrets.ALIAS }}" -keyalg RSA -keysize 2048 \
+            -validity 10000 -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.KEY_PASSWORD }}" \
             -dname "CN=Hamed, OU=Dev, O=Scan2PDF, L=Tehran, S=Tehran, C=IR"
           fi
 
       # مرحله بیلد نسخه نهایی (Release) با استفاده از سکرت‌ها
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
         env:
           ALIAS: ${{ secrets.ALIAS }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
