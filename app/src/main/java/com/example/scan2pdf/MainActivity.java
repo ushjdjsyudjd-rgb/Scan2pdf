@@ -107,9 +107,10 @@ public class MainActivity extends AppCompatActivity {
             .setTitle("درباره توسعه‌دهنده")
             .setMessage("این نرم‌افزار توسط حامد شعبانی پور طراحی و توسعه یافته است.\n\n" +
                         "سازنده: حامد شعبانی پور\n" +
-                        "ایمیل: ushjdjsyudjd@gmail.com\n\n" +
+                        "ایمیل: ushjdjsyudjd@gmail.com\n" +
+                        "وبسایت: v-scan2pdf.ir\n\n" +
                         "نسخه: 1.0.0")
-            .setPositiveButton("بستن", null)
+            .setPositiveButton("متوجه شدم", null)
             .show();
     }
 
