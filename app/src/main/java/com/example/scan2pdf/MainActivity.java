@@ -59,18 +59,20 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // تنظیم نوار ابزار
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("پی دی اف ساز حرفه‌ای");
         }
 
+        // شناسایی ویوها
         btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         MaterialCardView cardCapture = findViewById(R.id.cardCapture);
         MaterialCardView cardArchive = findViewById(R.id.cardArchive);
-        MaterialCardView cardGallery = findViewById(R.id.cardGallery);
 
+        // تنظیم لیست پیش‌نمایش
         adapter = new ImageAdapter(imageList, position -> {
             new AlertDialog.Builder(this)
                 .setTitle("حذف صفحه")
@@ -86,12 +88,20 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3)); 
         recyclerView.setAdapter(adapter);
 
-        cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
-        if (cardGallery != null) {
-            cardGallery.setOnClickListener(v -> checkPermissionAndOpen(false));
+        // عملکرد کارت اسکن با دوربین
+        if (cardCapture != null) {
+            cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
         }
-        cardArchive.setOnClickListener(v -> startActivity(new Intent(this, ArchiveActivity.class)));
 
+        // عملکرد کارت مشاهده آرشیو
+        if (cardArchive != null) {
+            cardArchive.setOnClickListener(v -> {
+                Intent intent = new Intent(this, ArchiveActivity.class);
+                startActivity(intent);
+            });
+        }
+
+        // عملکرد دکمه نهایی سازی PDF
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
     }
 
@@ -110,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         File photoFile = null;
         try { photoFile = createImageFile(); } catch (IOException ignored) {}
+        
         if (photoFile != null) {
             Uri photoURI = FileProvider.getUriForFile(this, getPackageName() + ".provider", photoFile);
             takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
@@ -129,8 +140,11 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                processBitmap(decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024));
-                new File(currentPhotoPath).delete();
+                Bitmap bitmap = decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024);
+                if (bitmap != null) {
+                    processBitmap(bitmap);
+                    new File(currentPhotoPath).delete();
+                }
             } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
                 if (data.getClipData() != null) {
                     int count = data.getClipData().getItemCount();
@@ -224,8 +238,10 @@ public class MainActivity extends AppCompatActivity {
             String timeDir = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date());
             File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
             if (!root.exists()) root.mkdirs();
+            
             String name = (fileName.isEmpty()) ? "Scan_" + timeDir : fileName;
             File pdfFile = new File(root, name + ".pdf");
+            
             PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
             document.open();
             for (Bitmap bmp : imageList) {
@@ -240,6 +256,7 @@ public class MainActivity extends AppCompatActivity {
             document.close();
             Toast.makeText(this, "ذخیره شد در دانلودها", Toast.LENGTH_LONG).show();
             sharePdf(pdfFile);
+            
             imageList.clear();
             adapter.notifyDataSetChanged();
             btnSavePdf.setVisibility(View.GONE);
@@ -269,7 +286,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == 1) showAboutDialog();
+        if (item.getItemId() == 1) {
+            showAboutDialog();
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -279,6 +298,7 @@ public class MainActivity extends AppCompatActivity {
             .setMessage("این نرم‌افزار توسط حامد شعبانی پور طراحی و توسعه یافته است.\n\n" +
                         "سازنده: حامد شعبانی پور\n" +
                         "ایمیل: ushjdjsyudjd@gmail.com")
-            .setPositiveButton("متوجه شدم", null).show();
+            .setPositiveButton("متوجه شدم", null)
+            .show();
     }
 }
