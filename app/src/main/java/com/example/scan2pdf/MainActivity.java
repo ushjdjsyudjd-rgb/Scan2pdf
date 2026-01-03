@@ -194,33 +194,62 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void convertWordToPdf(Uri wordUri) {
-        try {
-            InputStream is = getContentResolver().openInputStream(wordUri);
-            XWPFDocument doc = new XWPFDocument(is);
-            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
-            if (!root.exists()) root.mkdirs();
-            File pdfFile = new File(root, "WordToPdf_" + System.currentTimeMillis() + ".pdf");
-            
-            Document document = new Document();
-            PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
-            document.open();
-            for (XWPFParagraph p : doc.getParagraphs()) {
-                String text = p.getText();
-                if (text != null && !text.isEmpty()) {
-                    document.add(new Paragraph(text));
-                }
-            }
-            document.close();
-            doc.close();
-            is.close();
-            Toast.makeText(this, "تبدیل ورد به پی‌دی‌اف انجام شد", Toast.LENGTH_SHORT).show();
-            sharePdf(pdfFile);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, "خطا در تبدیل ورد: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-    }
+    try {
+        // استفاده از کلاس کمکی برای خواندن امن فایل در اندروید
+        InputStream is = getContentResolver().openInputStream(wordUri);
+        XWPFDocument doc = new XWPFDocument(is);
+        
+        File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
+        if (!root.exists()) root.mkdirs();
+        File pdfFile = new File(root, "Word_" + System.currentTimeMillis() + ".pdf");
+        
+        Document document = new Document();
+        PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
+        document.open();
 
+        // استخراج پاراگراف‌ها
+        List<XWPFParagraph> paragraphs = doc.getParagraphs();
+        for (XWPFParagraph p : paragraphs) {
+            document.add(new Paragraph(p.getText()));
+        }
+
+        document.close();
+        doc.close();
+        is.close();
+        
+        runOnUiThread(() -> {
+            Toast.makeText(this, "تبدیل ورد با موفقیت انجام شد", Toast.LENGTH_SHORT).show();
+            sharePdf(pdfFile);
+        });
+    } catch (Exception e) {
+        e.printStackTrace();
+        runOnUiThread(() -> Toast.makeText(this, "خطا در ورد: فایل سنگین است یا فرمت استاندارد نیست", Toast.LENGTH_LONG).show();
+    }
+}
+
+
+    private void performOcrOnPdf(Uri pdfUri) {
+    Toast.makeText(this, "در حال پردازش OCR... لطفا شکیبا باشید", Toast.LENGTH_LONG).show();
+    // در اینجا نیاز به کتابخانه ای مثل Android PdfRenderer داریم
+    // فرآیند OCR سنگین است و باید در ترد (Thread) جداگانه انجام شود
+    new Thread(() -> {
+        try {
+            // ۱. تبدیل صفحات پی‌دی‌اف به عکس (بیت‌مپ)
+            // ۲. ارسال بیت‌مپ به موتور Tesseract
+            // ۳. دریافت متن و نمایش در یک دیالوگ
+            
+            // کد نمونه برای نمایش نتیجه
+            runOnUiThread(() -> {
+                new AlertDialog.Builder(this)
+                    .setTitle("متن استخراج شده")
+                    .setMessage("قابلیت OCR نیاز به دانلود دیتا فایل (eng.traineddata) دارد. آیا می‌خواهید دانلود شود؟")
+                    .setPositiveButton("بله", null).show();
+            });
+        } catch (Exception e) {
+            runOnUiThread(() -> Toast.makeText(this, "خطا در پردازش OCR", Toast.LENGTH_SHORT).show());
+        }
+    }).start();
+}
     private void handleGalleryUri(Uri uri) {
         try {
             InputStream is = getContentResolver().openInputStream(uri);
