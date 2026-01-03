@@ -32,6 +32,7 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.pdf.PdfCopy;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
@@ -108,9 +109,7 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType(mimeType);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        if (requestCode == REQUEST_PDF_MERGE_PICK) {
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        }
+        if (requestCode == REQUEST_PDF_MERGE_PICK) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         startActivityForResult(Intent.createChooser(intent, "انتخاب فایل"), requestCode);
     }
 
@@ -168,10 +167,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void mergePdfFiles(List<Uri> uris) {
-        if (uris.size() < 2) {
-            Toast.makeText(this, "لطفاً حداقل دو فایل انتخاب کنید", Toast.LENGTH_SHORT).show();
-            return;
-        }
         try {
             File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
             if (!root.exists()) root.mkdirs();
@@ -185,9 +180,10 @@ public class MainActivity extends AppCompatActivity {
                 PdfReader reader = new PdfReader(is);
                 copy.addDocument(reader);
                 reader.close();
+                is.close();
             }
             document.close();
-            Toast.makeText(this, "فایل‌ها با موفقیت ادغام شدند", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "ادغام موفقیت‌آمیز بود", Toast.LENGTH_SHORT).show();
             sharePdf(mergedFile);
         } catch (Exception e) {
             Toast.makeText(this, "خطا در ادغام PDF", Toast.LENGTH_SHORT).show();
@@ -200,19 +196,21 @@ public class MainActivity extends AppCompatActivity {
             XWPFDocument doc = new XWPFDocument(is);
             File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
             if (!root.exists()) root.mkdirs();
-            File pdfFile = new File(root, "WordConv_" + System.currentTimeMillis() + ".pdf");
+            File pdfFile = new File(root, "WordToPdf_" + System.currentTimeMillis() + ".pdf");
             
             Document document = new Document();
             PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
             document.open();
             for (XWPFParagraph p : doc.getParagraphs()) {
-                document.add(new com.itextpdf.text.Paragraph(p.getText()));
+                document.add(new Paragraph(p.getText()));
             }
             document.close();
-            Toast.makeText(this, "تبدیل ورد انجام شد", Toast.LENGTH_LONG).show();
+            doc.close();
+            is.close();
+            Toast.makeText(this, "تبدیل ورد به پی‌دی‌اف انجام شد", Toast.LENGTH_SHORT).show();
             sharePdf(pdfFile);
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در تبدیل Word", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "خطا در تبدیل ورد", Toast.LENGTH_SHORT).show();
         }
     }
 
