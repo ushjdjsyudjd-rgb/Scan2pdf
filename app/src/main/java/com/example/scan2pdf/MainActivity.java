@@ -145,18 +145,21 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK && data != null) {
+        if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                processBitmap(decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024));
-                new File(currentPhotoPath).delete();
-            } else if (requestCode == REQUEST_GALLERY_PICK) {
+                // دوربین برای حالت EXTRA_OUTPUT دیتای برگشتی ندارد، مستقیماً از فایل می‌خوانیم
+                Bitmap bitmap = decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024);
+                if (bitmap != null) {
+                    processBitmap(bitmap);
+                }
+            } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
                 if (data.getClipData() != null) {
                     for (int i = 0; i < data.getClipData().getItemCount(); i++) 
                         handleGalleryUri(data.getClipData().getItemAt(i).getUri());
                 } else if (data.getData() != null) handleGalleryUri(data.getData());
-            } else if (requestCode == REQUEST_WORD_PICK) {
+            } else if (requestCode == REQUEST_WORD_PICK && data != null) {
                 convertWordToPdf(data.getData());
-            } else if (requestCode == REQUEST_PDF_MERGE_PICK) {
+            } else if (requestCode == REQUEST_PDF_MERGE_PICK && data != null) {
                 List<Uri> pdfUris = new ArrayList<>();
                 if (data.getClipData() != null) {
                     for (int i = 0; i < data.getClipData().getItemCount(); i++) pdfUris.add(data.getClipData().getItemAt(i).getUri());
@@ -202,7 +205,10 @@ public class MainActivity extends AppCompatActivity {
             PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
             document.open();
             for (XWPFParagraph p : doc.getParagraphs()) {
-                document.add(new Paragraph(p.getText()));
+                String text = p.getText();
+                if (text != null && !text.isEmpty()) {
+                    document.add(new Paragraph(text));
+                }
             }
             document.close();
             doc.close();
@@ -210,14 +216,17 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "تبدیل ورد به پی‌دی‌اف انجام شد", Toast.LENGTH_SHORT).show();
             sharePdf(pdfFile);
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در تبدیل ورد", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+            Toast.makeText(this, "خطا در تبدیل ورد: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
     private void handleGalleryUri(Uri uri) {
         try {
             InputStream is = getContentResolver().openInputStream(uri);
-            processBitmap(BitmapFactory.decodeStream(is));
+            Bitmap bitmap = BitmapFactory.decodeStream(is);
+            if (bitmap != null) processBitmap(bitmap);
+            is.close();
         } catch (Exception e) {
             Toast.makeText(this, "خطا در بارگذاری تصویر", Toast.LENGTH_SHORT).show();
         }
@@ -225,7 +234,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void processBitmap(Bitmap bitmap) {
         if (bitmap != null) {
-            imageList.add(applyGrayscale(bitmap));
+            // اعمال فیلتر سیاه و سفید برای اسکن بهتر
+            Bitmap gray = applyGrayscale(bitmap);
+            imageList.add(gray);
             adapter.notifyDataSetChanged();
             btnSavePdf.setVisibility(View.VISIBLE);
         }
@@ -233,7 +244,8 @@ public class MainActivity extends AppCompatActivity {
 
     private File createImageFile() throws IOException {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", getExternalFilesDir(Environment.DIRECTORY_PICTURES));
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", storageDir);
         currentPhotoPath = image.getAbsolutePath();
         return image;
     }
@@ -282,6 +294,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createPdf(String fileName) {
+        if (imageList.isEmpty()) return;
         Document document = new Document(PageSize.A4, 20, 20, 20, 20);
         try {
             File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
