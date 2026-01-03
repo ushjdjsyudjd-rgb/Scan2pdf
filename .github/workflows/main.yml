@@ -24,8 +24,8 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        # متغیر قبلی JAVA_TOOL_OPTIONS را حذف کردیم و مستقیماً به گریدل رم دادیم
-        run: ./gradlew assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=512m"
+        # اینجا دیگه هیچ تنظیماتی اضافه نمی‌کنیم تا با فایل properties تداخل پیدا نکنه
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
