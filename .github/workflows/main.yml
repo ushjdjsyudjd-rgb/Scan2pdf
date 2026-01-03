@@ -36,11 +36,9 @@ jobs:
             -dname "CN=Hamed, OU=Dev, O=Scan2PDF, L=Tehran, S=Tehran, C=IR"
           fi
 
-      # مرحله بیلد نسخه نهایی (Release) - فقط دستور اجرا اصلاح شد
+      # مرحله بیلد نسخه نهایی - استفاده مستقیم از دستور gradle برای حذف خطای حافظه
       - name: Build Release APK
-        run: |
-          chmod +x gradlew
-          ./gradlew clean :app:assembleRelease --no-daemon
+        run: gradle :app:assembleRelease --no-daemon
         env:
           ALIAS: ${{ secrets.ALIAS }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
