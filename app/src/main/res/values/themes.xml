@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Scan2pdf" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">#2196F3</item>
+        <item name="colorPrimaryVariant">#1976D2</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:navigationBarColor">#F0F2F5</item>
+        <item name="android:statusBarColor">#1976D2</item>
+    </style>
+
+    <style name="GlassButton" parent="Widget.MaterialComponents.ExtendedFloatingActionButton">
+        <item name="backgroundTint">#80FFFFFF</item>
+        <item name="android:textColor">#2196F3</item>
+        <item name="strokeColor">#2196F3</item>
+        <item name="strokeWidth">2dp</item>
+        <item name="app:iconTint">#2196F3</item>
+        <item name="android:backdropFilter">blur(20px)</item> </style>
+</resources>
