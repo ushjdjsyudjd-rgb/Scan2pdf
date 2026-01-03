@@ -6,12 +6,6 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
 
-    <queries>
-        <intent>
-            <action android:name="android.media.action.IMAGE_CAPTURE" />
-        </intent>
-    </queries>
-
     <application 
         android:label="Scan2PDF" 
         android:icon="@drawable/icon"
@@ -33,8 +27,6 @@
         <activity android:name=".ArchiveActivity" 
             android:label="My Files"
             android:parentActivityName=".MainActivity" />
-
-        <activity android:name="io.github.isidoreous.gscanner.GScannerActivity" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
