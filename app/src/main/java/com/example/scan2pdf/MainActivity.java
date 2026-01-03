@@ -18,7 +18,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,6 +27,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Image;
@@ -56,16 +56,20 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // تنظیم نوار ابزار
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("پی دی اف ساز");
+            getSupportActionBar().setTitle("پی دی اف ساز حرفه‌ای");
         }
 
+        // شناسایی ویوها
         btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
-        ExtendedFloatingActionButton btnCapture = findViewById(R.id.btnCapture);
+        MaterialCardView cardCapture = findViewById(R.id.cardCapture);
+        MaterialCardView cardArchive = findViewById(R.id.cardArchive);
 
+        // تنظیم لیست پیش‌نمایش
         adapter = new ImageAdapter(imageList, position -> {
             new AlertDialog.Builder(this)
                 .setTitle("حذف صفحه")
@@ -81,24 +85,30 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
         recyclerView.setAdapter(adapter);
 
-        btnCapture.setOnClickListener(v -> checkPermissionAndOpen());
+        // عملکرد کارت اسکن با دوربین
+        cardCapture.setOnClickListener(v -> checkPermissionAndOpen());
+
+        // عملکرد کارت مشاهده آرشیو
+        cardArchive.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ArchiveActivity.class);
+            startActivity(intent);
+        });
+
+        // عملکرد دکمه نهایی سازی PDF
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "اسکن جدید").setIcon(android.R.drawable.ic_menu_add);
-        menu.add(0, 2, 0, "اسکن‌های قبلی").setIcon(android.R.drawable.ic_menu_recent_history);
-        menu.add(0, 3, 0, "درباره سازنده").setIcon(android.R.drawable.ic_menu_info_details);
+        menu.add(0, 1, 0, "درباره سازنده").setIcon(android.R.drawable.ic_menu_info_details);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == 1) checkPermissionAndOpen();
-        else if (id == 2) startActivity(new Intent(this, ArchiveActivity.class));
-        else if (id == 3) showAboutDialog();
+        if (item.getItemId() == 1) {
+            showAboutDialog();
+        }
         return super.onOptionsItemSelected(item);
     }
 
