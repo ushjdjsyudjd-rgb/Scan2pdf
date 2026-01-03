@@ -30,7 +30,6 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    // اصلاح این بخش برای جلوگیری از خطای گریدل 9
     packaging {
         resources {
             excludes += [
@@ -56,9 +55,12 @@ dependencies {
     // iText PDF
     implementation 'com.itextpdf:itextpdf:5.5.13.3'
     
-    // Apache POI Word
+    // Apache POI Word - استفاده از نسخه‌های هماهنگ
     implementation 'org.apache.poi:poi:5.2.3'
     implementation 'org.apache.poi:poi-ooxml:5.2.3'
+    
+    // برای کارکرد صحیح ورد در اندروید
+    implementation 'com.fasterxml.woodstox:woodstox-core:6.5.0'
 
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
