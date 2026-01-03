@@ -69,8 +69,6 @@ public class MainActivity extends AppCompatActivity {
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         MaterialCardView cardCapture = findViewById(R.id.cardCapture);
         MaterialCardView cardArchive = findViewById(R.id.cardArchive);
-        
-        // پیدا کردن کارت گالری (مطمئن شو در xml آیدی آن cardGallery باشد)
         MaterialCardView cardGallery = findViewById(R.id.cardGallery);
 
         adapter = new ImageAdapter(imageList, position -> {
@@ -85,27 +83,23 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton("خیر", null).show();
         });
 
-        recyclerView.setLayoutManager(new GridLayoutManager(this, 3)); // ۳ ستونه برای ظاهر بهتر
+        recyclerView.setLayoutManager(new GridLayoutManager(this, 3)); 
         recyclerView.setAdapter(adapter);
 
-        // دکمه دوربین
         cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
-
-        // دکمه گالری
         if (cardGallery != null) {
             cardGallery.setOnClickListener(v -> checkPermissionAndOpen(false));
         }
-
-        // دکمه آرشیو
         cardArchive.setOnClickListener(v -> startActivity(new Intent(this, ArchiveActivity.class)));
 
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
     }
 
     private void checkPermissionAndOpen(boolean isCamera) {
-        String[] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE};
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, permissions, PERMISSION_CODE);
+            ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE
+            }, PERMISSION_CODE);
         } else {
             if (isCamera) openCamera();
             else openGallery();
@@ -200,3 +194,91 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap applyGrayscale(Bitmap bmp) {
         Bitmap result = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(result);
+        Paint paint = new Paint();
+        ColorMatrix cm = new ColorMatrix();
+        cm.setSaturation(0);
+        paint.setColorFilter(new ColorMatrixColorFilter(cm));
+        c.drawBitmap(bmp, 0, 0, paint);
+        return result;
+    }
+
+    private void showNamingDialog() {
+        final EditText input = new EditText(this);
+        input.setHint("نام فایل را وارد کنید");
+        FrameLayout container = new FrameLayout(this);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(-1, -2);
+        params.setMargins(50, 20, 50, 20);
+        input.setLayoutParams(params);
+        container.addView(input);
+
+        new AlertDialog.Builder(this)
+            .setTitle("ذخیره PDF")
+            .setView(container)
+            .setPositiveButton("تایید", (dialog, which) -> createPdf(input.getText().toString().trim()))
+            .setNegativeButton("لغو", null).show();
+    }
+
+    private void createPdf(String fileName) {
+        Document document = new Document(PageSize.A4, 20, 20, 20, 20);
+        try {
+            String timeDir = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date());
+            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
+            if (!root.exists()) root.mkdirs();
+            String name = (fileName.isEmpty()) ? "Scan_" + timeDir : fileName;
+            File pdfFile = new File(root, name + ".pdf");
+            PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
+            document.open();
+            for (Bitmap bmp : imageList) {
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                bmp.compress(Bitmap.CompressFormat.JPEG, 80, stream);
+                Image image = Image.getInstance(stream.toByteArray());
+                image.scaleToFit(PageSize.A4.getWidth() - 40, PageSize.A4.getHeight() - 40);
+                image.setAlignment(Image.ALIGN_CENTER);
+                document.add(image);
+                document.newPage();
+            }
+            document.close();
+            Toast.makeText(this, "ذخیره شد در دانلودها", Toast.LENGTH_LONG).show();
+            sharePdf(pdfFile);
+            imageList.clear();
+            adapter.notifyDataSetChanged();
+            btnSavePdf.setVisibility(View.GONE);
+        } catch (Exception e) {
+            Toast.makeText(this, "خطا در ساخت PDF", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void sharePdf(File file) {
+        try {
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", file);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("application/pdf");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "ارسال فایل..."));
+        } catch (Exception e) {
+            Toast.makeText(this, "خطا در اشتراک‌گذاری", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(0, 1, 0, "درباره سازنده").setIcon(android.R.drawable.ic_menu_info_details);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == 1) showAboutDialog();
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void showAboutDialog() {
+        new AlertDialog.Builder(this)
+            .setTitle("درباره توسعه‌دهنده")
+            .setMessage("این نرم‌افزار توسط حامد شعبانی پور طراحی و توسعه یافته است.\n\n" +
+                        "سازنده: حامد شعبانی پور\n" +
+                        "ایمیل: ushjdjsyudjd@gmail.com")
+            .setPositiveButton("متوجه شدم", null).show();
+    }
+}
