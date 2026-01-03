@@ -32,7 +32,11 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.PageSize;
+import com.itextpdf.text.pdf.PdfCopy;
+import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -61,23 +65,21 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // تنظیم نوار ابزار
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("پی دی اف ساز حرفه‌ای");
         }
 
-        // شناسایی ویوها
         btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
+        
         MaterialCardView cardCapture = findViewById(R.id.cardCapture);
         MaterialCardView cardGallery = findViewById(R.id.cardGallery);
         MaterialCardView cardWordToPdf = findViewById(R.id.cardWordToPdf);
         MaterialCardView cardMergePdf = findViewById(R.id.cardMergePdf);
         MaterialCardView cardArchive = findViewById(R.id.cardArchive);
 
-        // تنظیم لیست پیش‌نمایش
         adapter = new ImageAdapter(imageList, position -> {
             new AlertDialog.Builder(this)
                 .setTitle("حذف صفحه")
@@ -93,41 +95,19 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3)); 
         recyclerView.setAdapter(adapter);
 
-        // ۱. عملکرد کارت اسکن با دوربین
-        if (cardCapture != null) {
-            cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
-        }
+        if (cardCapture != null) cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
+        if (cardGallery != null) cardGallery.setOnClickListener(v -> openGallery());
+        if (cardWordToPdf != null) cardWordToPdf.setOnClickListener(v -> openFilePicker("application/vnd.openxmlformats-officedocument.wordprocessingml.document", REQUEST_WORD_PICK));
+        if (cardMergePdf != null) cardMergePdf.setOnClickListener(v -> openFilePicker("application/pdf", REQUEST_PDF_MERGE_PICK));
+        if (cardArchive != null) cardArchive.setOnClickListener(v -> startActivity(new Intent(this, ArchiveActivity.class)));
 
-        // ۲. عملکرد Image to PDF (گالری)
-        if (cardGallery != null) {
-            cardGallery.setOnClickListener(v -> openGallery());
-        }
-
-        // ۳. عملکرد Word to PDF
-        if (cardWordToPdf != null) {
-            cardWordToPdf.setOnClickListener(v -> openFilePicker("application/msword", REQUEST_WORD_PICK));
-        }
-
-        // ۴. عملکرد Merge PDF
-        if (cardMergePdf != null) {
-            cardMergePdf.setOnClickListener(v -> openFilePicker("application/pdf", REQUEST_PDF_MERGE_PICK));
-        }
-
-        // ۵. عملکرد کارت مشاهده آرشیو
-        if (cardArchive != null) {
-            cardArchive.setOnClickListener(v -> {
-                Intent intent = new Intent(this, ArchiveActivity.class);
-                startActivity(intent);
-            });
-        }
-
-        // عملکرد دکمه نهایی سازی PDF
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
     }
 
     private void openFilePicker(String mimeType, int requestCode) {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType(mimeType);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
         if (requestCode == REQUEST_PDF_MERGE_PICK) {
             intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         }
@@ -149,7 +129,6 @@ public class MainActivity extends AppCompatActivity {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         File photoFile = null;
         try { photoFile = createImageFile(); } catch (IOException ignored) {}
-        
         if (photoFile != null) {
             Uri photoURI = FileProvider.getUriForFile(this, getPackageName() + ".provider", photoFile);
             takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
@@ -169,35 +148,78 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK && data != null) {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                Bitmap bitmap = decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024);
-                if (bitmap != null) {
-                    processBitmap(bitmap);
-                    new File(currentPhotoPath).delete();
-                }
+                processBitmap(decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024));
+                new File(currentPhotoPath).delete();
             } else if (requestCode == REQUEST_GALLERY_PICK) {
                 if (data.getClipData() != null) {
-                    int count = data.getClipData().getItemCount();
-                    for (int i = 0; i < count; i++) {
+                    for (int i = 0; i < data.getClipData().getItemCount(); i++) 
                         handleGalleryUri(data.getClipData().getItemAt(i).getUri());
-                    }
-                } else if (data.getData() != null) {
-                    handleGalleryUri(data.getData());
-                }
+                } else if (data.getData() != null) handleGalleryUri(data.getData());
             } else if (requestCode == REQUEST_WORD_PICK) {
-                Toast.makeText(this, "فایل Word انتخاب شد. در حال آماده‌سازی مبدل...", Toast.LENGTH_SHORT).show();
-                // در اینجا منطق تبدیل Word اضافه خواهد شد
+                convertWordToPdf(data.getData());
             } else if (requestCode == REQUEST_PDF_MERGE_PICK) {
-                Toast.makeText(this, "فایل‌های PDF برای ادغام انتخاب شدند", Toast.LENGTH_SHORT).show();
-                // در اینجا منطق Merge اضافه خواهد شد
+                List<Uri> pdfUris = new ArrayList<>();
+                if (data.getClipData() != null) {
+                    for (int i = 0; i < data.getClipData().getItemCount(); i++) pdfUris.add(data.getClipData().getItemAt(i).getUri());
+                } else if (data.getData() != null) pdfUris.add(data.getData());
+                mergePdfFiles(pdfUris);
             }
+        }
+    }
+
+    private void mergePdfFiles(List<Uri> uris) {
+        if (uris.size() < 2) {
+            Toast.makeText(this, "لطفاً حداقل دو فایل انتخاب کنید", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
+            if (!root.exists()) root.mkdirs();
+            File mergedFile = new File(root, "Merged_" + System.currentTimeMillis() + ".pdf");
+            
+            Document document = new Document();
+            PdfCopy copy = new PdfCopy(document, new FileOutputStream(mergedFile));
+            document.open();
+            for (Uri uri : uris) {
+                InputStream is = getContentResolver().openInputStream(uri);
+                PdfReader reader = new PdfReader(is);
+                copy.addDocument(reader);
+                reader.close();
+            }
+            document.close();
+            Toast.makeText(this, "فایل‌ها با موفقیت ادغام شدند", Toast.LENGTH_LONG).show();
+            sharePdf(mergedFile);
+        } catch (Exception e) {
+            Toast.makeText(this, "خطا در ادغام PDF", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void convertWordToPdf(Uri wordUri) {
+        try {
+            InputStream is = getContentResolver().openInputStream(wordUri);
+            XWPFDocument doc = new XWPFDocument(is);
+            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
+            if (!root.exists()) root.mkdirs();
+            File pdfFile = new File(root, "WordConv_" + System.currentTimeMillis() + ".pdf");
+            
+            Document document = new Document();
+            PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
+            document.open();
+            for (XWPFParagraph p : doc.getParagraphs()) {
+                document.add(new com.itextpdf.text.Paragraph(p.getText()));
+            }
+            document.close();
+            Toast.makeText(this, "تبدیل ورد انجام شد", Toast.LENGTH_LONG).show();
+            sharePdf(pdfFile);
+        } catch (Exception e) {
+            Toast.makeText(this, "خطا در تبدیل Word", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void handleGalleryUri(Uri uri) {
         try {
             InputStream is = getContentResolver().openInputStream(uri);
-            Bitmap bitmap = BitmapFactory.decodeStream(is);
-            processBitmap(bitmap);
+            processBitmap(BitmapFactory.decodeStream(is));
         } catch (Exception e) {
             Toast.makeText(this, "خطا در بارگذاری تصویر", Toast.LENGTH_SHORT).show();
         }
@@ -213,8 +235,7 @@ public class MainActivity extends AppCompatActivity {
 
     private File createImageFile() throws IOException {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", storageDir);
+        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", getExternalFilesDir(Environment.DIRECTORY_PICTURES));
         currentPhotoPath = image.getAbsolutePath();
         return image;
     }
@@ -229,12 +250,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
-        final int height = options.outHeight;
-        final int width = options.outWidth;
         int inSampleSize = 1;
-        if (height > reqHeight || width > reqWidth) {
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
+        if (options.outHeight > reqHeight || options.outWidth > reqWidth) {
+            final int halfHeight = options.outHeight / 2;
+            final int halfWidth = options.outWidth / 2;
             while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) inSampleSize *= 2;
         }
         return inSampleSize;
@@ -259,24 +278,18 @@ public class MainActivity extends AppCompatActivity {
         params.setMargins(50, 20, 50, 20);
         input.setLayoutParams(params);
         container.addView(input);
-
-        new AlertDialog.Builder(this)
-            .setTitle("ذخیره PDF")
-            .setView(container)
-            .setPositiveButton("تایید", (dialog, which) -> createPdf(input.getText().toString().trim()))
+        new AlertDialog.Builder(this).setTitle("ذخیره PDF").setView(container)
+            .setPositiveButton("تایید", (d, w) -> createPdf(input.getText().toString().trim()))
             .setNegativeButton("لغو", null).show();
     }
 
     private void createPdf(String fileName) {
         Document document = new Document(PageSize.A4, 20, 20, 20, 20);
         try {
-            String timeDir = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date());
             File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
             if (!root.exists()) root.mkdirs();
-            
-            String name = (fileName.isEmpty()) ? "Scan_" + timeDir : fileName;
+            String name = (fileName.isEmpty()) ? "Scan_" + System.currentTimeMillis() : fileName;
             File pdfFile = new File(root, name + ".pdf");
-            
             PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
             document.open();
             for (Bitmap bmp : imageList) {
@@ -291,7 +304,6 @@ public class MainActivity extends AppCompatActivity {
             document.close();
             Toast.makeText(this, "ذخیره شد در دانلودها", Toast.LENGTH_LONG).show();
             sharePdf(pdfFile);
-            
             imageList.clear();
             adapter.notifyDataSetChanged();
             btnSavePdf.setVisibility(View.GONE);
@@ -321,19 +333,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == 1) {
-            showAboutDialog();
-        }
+        if (item.getItemId() == 1) showAboutDialog();
         return super.onOptionsItemSelected(item);
     }
 
     private void showAboutDialog() {
-        new AlertDialog.Builder(this)
-            .setTitle("درباره توسعه‌دهنده")
-            .setMessage("این نرم‌افزار توسط حامد شعبانی پور طراحی و توسعه یافته است.\n\n" +
-                        "سازنده: حامد شعبانی پور\n" +
-                        "ایمیل: ushjdjsyudjd@gmail.com")
-            .setPositiveButton("متوجه شدم", null)
-            .show();
+        new AlertDialog.Builder(this).setTitle("درباره توسعه‌دهنده")
+            .setMessage("سازنده: حامد شعبانی پور\nایمیل: ushjdjsyudjd@gmail.com")
+            .setPositiveButton("متوجه شدم", null).show();
     }
 }
