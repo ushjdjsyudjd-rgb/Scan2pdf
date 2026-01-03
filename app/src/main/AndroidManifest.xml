@@ -13,7 +13,7 @@
     </queries>
 
     <application 
-        android:label="پی دی اف ساز" 
+        android:label="Scan2PDF" 
         android:icon="@drawable/icon"
         android:roundIcon="@drawable/icon"
         android:theme="@style/Theme.Scan2pdf"
@@ -31,7 +31,7 @@
         <activity android:name=".MainActivity" android:exported="false" />
 
         <activity android:name=".ArchiveActivity" 
-            android:label="اسکن‌های قبلی"
+            android:label="My Files"
             android:parentActivityName=".MainActivity" />
 
         <provider
