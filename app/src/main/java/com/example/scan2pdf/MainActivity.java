@@ -12,7 +12,6 @@ import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -27,8 +26,13 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanner;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.PageSize;
@@ -36,32 +40,21 @@ import com.itextpdf.text.pdf.PdfCopy;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
 
-// ایمپورت‌های کتابخانه جدید برای رفع خطای 401
-import io.github.isidoreous.gscanner.GScanner;
-import io.github.isidoreous.gscanner.GScannerActivity;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
-    private static final int REQUEST_IMAGE_CAPTURE = 1;
-    private static final int REQUEST_GALLERY_PICK = 2;
-    private static final int REQUEST_CROP_IMAGE = 3; 
     private static final int REQUEST_PDF_MERGE_PICK = 4;
     private static final int PERMISSION_CODE = 100;
     
     private List<Bitmap> imageList = new ArrayList<>();
     private ImageAdapter adapter;
     private ExtendedFloatingActionButton btnSavePdf;
-    private String currentPhotoPath; 
+    private GmsDocumentScanner scanner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +66,14 @@ public class MainActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Scan2PDF");
         }
+
+        // تنظیمات اسکنر گوگل
+        GmsDocumentScannerOptions options = new GmsDocumentScannerOptions.Builder()
+                .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                .setGalleryImportAllowed(true)
+                .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+                .build();
+        scanner = GmsDocumentScanning.getClient(options);
 
         btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
@@ -97,49 +98,35 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3)); 
         recyclerView.setAdapter(adapter);
 
-        cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
-        cardGallery.setOnClickListener(v -> openGallery());
+        cardCapture.setOnClickListener(v -> startScanning());
+        cardGallery.setOnClickListener(v -> startScanning()); // اسکنر گوگل گالری هم دارد
         cardMergePdf.setOnClickListener(v -> openFilePicker("application/pdf", REQUEST_PDF_MERGE_PICK));
         cardArchive.setOnClickListener(v -> startActivity(new Intent(this, ArchiveActivity.class)));
 
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
     }
 
-    private void openCamera() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        File photoFile = null;
-        try { photoFile = createImageFile(); } catch (IOException ignored) {}
-        if (photoFile != null) {
-            Uri photoURI = FileProvider.getUriForFile(this, getPackageName() + ".provider", photoFile);
-            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
-        }
-    }
-
-    private void openGallery() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("image/*");
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        startActivityForResult(Intent.createChooser(intent, "Select Images"), REQUEST_GALLERY_PICK);
+    private void startScanning() {
+        scanner.getStartScanIntent(this)
+            .addOnSuccessListener(intentSender -> {
+                try {
+                    startIntentSenderForResult(intentSender, 1000, null, 0, 0, 0);
+                } catch (Exception e) {
+                    Toast.makeText(this, "خطا در اجرای اسکنر", Toast.LENGTH_SHORT).show();
+                }
+            });
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
-            if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                startCrop(currentPhotoPath);
-            } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
-                if (data.getClipData() != null) {
-                    for (int i = 0; i < data.getClipData().getItemCount(); i++) 
-                        handleGalleryUri(data.getClipData().getItemAt(i).getUri());
-                } else if (data.getData() != null) handleGalleryUri(data.getData());
-            } else if (requestCode == REQUEST_CROP_IMAGE && data != null) {
-                // دریافت نتیجه از اسکنر جدید
-                String resultPath = data.getStringExtra(GScannerActivity.RESULT_PATH);
-                if (resultPath != null) {
-                    Bitmap bitmap = BitmapFactory.decodeFile(resultPath);
-                    if (bitmap != null) processBitmap(bitmap);
+            if (requestCode == 1000) {
+                GmsDocumentScanningResult result = GmsDocumentScanningResult.fromActivityResultIntent(data);
+                if (result != null && result.getPages() != null) {
+                    for (GmsDocumentScanningResult.Page page : result.getPages()) {
+                        handleUri(page.getImageUri());
+                    }
                 }
             } else if (requestCode == REQUEST_PDF_MERGE_PICK && data != null) {
                 handlePdfMerge(data);
@@ -147,30 +134,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void startCrop(String path) {
-        // فراخوانی اسکنر جدید با مسیر تصویر
-        GScanner.with(this)
-                .setPath(path)
-                .setRequestCode(REQUEST_CROP_IMAGE)
-                .start();
-    }
-
-    private void handleGalleryUri(Uri uri) {
+    private void handleUri(Uri uri) {
         try {
             InputStream is = getContentResolver().openInputStream(uri);
             Bitmap bitmap = BitmapFactory.decodeStream(is);
-            if (bitmap != null) processBitmap(bitmap);
+            if (bitmap != null) {
+                Bitmap gray = applyGrayscale(bitmap);
+                imageList.add(gray);
+                adapter.notifyDataSetChanged();
+                btnSavePdf.setVisibility(View.VISIBLE);
+            }
             is.close();
         } catch (Exception e) { }
-    }
-
-    private void processBitmap(Bitmap bitmap) {
-        if (bitmap != null) {
-            Bitmap gray = applyGrayscale(bitmap);
-            imageList.add(gray);
-            adapter.notifyDataSetChanged();
-            btnSavePdf.setVisibility(View.VISIBLE);
-        }
     }
 
     private Bitmap applyGrayscale(Bitmap bmp) {
@@ -190,24 +165,6 @@ public class MainActivity extends AppCompatActivity {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         if (requestCode == REQUEST_PDF_MERGE_PICK) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         startActivityForResult(Intent.createChooser(intent, "Select File"), requestCode);
-    }
-
-    private void checkPermissionAndOpen(boolean isCamera) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE
-            }, PERMISSION_CODE);
-        } else {
-            if (isCamera) openCamera();
-            else openGallery();
-        }
-    }
-
-    private File createImageFile() throws IOException {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        File image = File.createTempFile("IMG_" + timeStamp, ".jpg", getExternalFilesDir(Environment.DIRECTORY_PICTURES));
-        currentPhotoPath = image.getAbsolutePath();
-        return image;
     }
 
     private void showNamingDialog() {
