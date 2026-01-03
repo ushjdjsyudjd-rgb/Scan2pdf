@@ -36,9 +36,9 @@ jobs:
             -dname "CN=Hamed, OU=Dev, O=Scan2PDF, L=Tehran, S=Tehran, C=IR"
           fi
 
-      # مرحله بیلد نسخه نهایی - استفاده مستقیم از دستور gradle برای حذف خطای حافظه
+      # مرحله بیلد نسخه نهایی - با افزایش رم به ۴ گیگابایت برای حل مشکل Garbage Collector
       - name: Build Release APK
-        run: gradle :app:assembleRelease --no-daemon
+        run: gradle :app:assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
         env:
           ALIAS: ${{ secrets.ALIAS }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
