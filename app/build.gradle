@@ -15,7 +15,6 @@ android {
         multiDexEnabled true
     }
 
-    // بخش تنظیمات امضای برنامه با استفاده از سکرت‌های گیت‌هاب
     signingConfigs {
         release {
             storeFile file(System.getenv("KEYSTORE_NAME") ?: "keystore.jks")
@@ -27,11 +26,15 @@ android {
 
     buildTypes {
         release {
+            // بهینه سازی و امنیت کد
             minifyEnabled true
-            signingConfig signingConfigs.release // استفاده از تنظیمات امضا در نسخه نهایی
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            shrinkResources true
+            signingConfig signingConfigs.release
             
-            // کد تغییر نام فایل خروجی به Scan2PDF.apk
+            // اضافه کردن بررسی برای وجود فایل پروگارد تا خطا ندهد
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 
+                          (file('proguard-rules.pro').exists() ? 'proguard-rules.pro' : 'proguard-rules-missing.pro')
+            
             android.applicationVariants.all { variant ->
                 variant.outputs.all {
                     outputFileName = "Scan2PDF.apk"
@@ -57,7 +60,8 @@ android {
                 'META-INF/NOTICE.txt',
                 'META-INF/LICENSE.txt',
                 'META-INF/AL2.0',
-                'META-INF/LGPL2.1'
+                'META-INF/LGPL2.1',
+                'META-INF/*.kotlin_module'
             ]
         }
     }
@@ -70,10 +74,11 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.multidex:multidex:2.0.1'
     
-    // iText PDF - هسته اصلی برنامه
+    // iText PDF و پیش‌نیازهای امنیتی آن برای حل خطای R8
     implementation 'com.itextpdf:itextpdf:5.5.13.3'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    implementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
     
-    // نمایش تصاویر
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
