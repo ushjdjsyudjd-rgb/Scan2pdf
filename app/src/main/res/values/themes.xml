@@ -1,19 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.Scan2pdf" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="colorPrimary">#2196F3</item>
-        <item name="colorPrimaryVariant">#1976D2</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="android:navigationBarColor">#F0F2F5</item>
-        <item name="android:statusBarColor">#1976D2</item>
-    </style>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <style name="GlassButton" parent="Widget.MaterialComponents.ExtendedFloatingActionButton">
-        <item name="backgroundTint">#CCFFFFFF</item>
-        <item name="android:textColor">#2196F3</item>
-        <item name="strokeColor">#2196F3</item>
-        <item name="strokeWidth">2dp</item>
-        <item name="iconTint">#2196F3</item>
-        <item name="rippleColor">#2196F3</item>
-    </style>
-</resources>
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-feature android:name="android.hardware.camera" android:required="true" />
+
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
+    <application 
+        android:label="Scan2PDF" 
+        android:icon="@drawable/icon"
+        android:roundIcon="@drawable/icon"
+        android:theme="@style/Theme.Scan2pdf"
+        android:requestLegacyExternalStorage="true">
+        
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".ArchiveActivity" 
+            android:label="اسکن‌های قبلی"
+            android:parentActivityName=".MainActivity" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.scan2pdf.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
