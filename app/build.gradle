@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.scan2pdf"
-        minSdk 26  // تغییر به اندروید 8 برای حل خطای کتابخانه ورد
+        minSdk 26
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -42,16 +42,11 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.multidex:multidex:2.0.1'
     
-    // iText PDF Library
     implementation 'com.itextpdf:itextpdf:5.5.13.3'
     
-    // Apache POI for Word processing
+    // استفاده از نسخه سبک‌تر برای جلوگیری از پر شدن رم
     implementation 'org.apache.poi:poi:5.2.3'
     implementation 'org.apache.poi:poi-ooxml:5.2.3'
-    
-    // Logging (Required for POI)
-    implementation 'org.apache.logging.log4j:log4j-api:2.18.0'
-    implementation 'org.apache.logging.log4j:log4j-core:2.18.0'
 
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
