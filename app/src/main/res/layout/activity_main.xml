@@ -4,8 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5"
-    android:layoutDirection="rtl">
+    android:background="#F5F5F5">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
@@ -16,7 +15,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="#E53935"
-            app:title="پی دی اف ساز حرفه‌ای"
+            app:title="Scan2PDF"
             app:titleTextColor="#FFFFFF" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -31,21 +30,11 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ابزارهای مدیریت فایل"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#333333"
-                android:layout_marginBottom="16dp"/>
-
             <GridLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:columnCount="2"
-                android:alignmentMode="alignMargins"
-                android:columnOrderPreserved="false">
+                android:alignmentMode="alignMargins">
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardCapture"
@@ -55,22 +44,9 @@
                     android:layout_margin="8dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="4dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical">
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:src="@android:drawable/ic_menu_camera"
-                            app:tint="#E53935" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="اسکن با دوربین"
-                            android:layout_marginTop="8dp"
-                            android:textStyle="bold"/>
+                    <LinearLayout android:gravity="center" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent">
+                        <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_menu_camera" app:tint="#E53935"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Camera Scan" android:textStyle="bold" android:layout_marginTop="8dp"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -82,49 +58,9 @@
                     android:layout_margin="8dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="4dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical">
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:src="@android:drawable/ic_menu_gallery"
-                            app:tint="#E53935" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Image to PDF"
-                            android:layout_marginTop="8dp"
-                            android:textStyle="bold"/>
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardWordToPdf"
-                    android:layout_width="0dp"
-                    android:layout_height="120dp"
-                    android:layout_columnWeight="1"
-                    android:layout_margin="8dp"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="4dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical">
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:src="@android:drawable/ic_menu_edit"
-                            app:tint="#E53935" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Word to PDF"
-                            android:layout_marginTop="8dp"
-                            android:textStyle="bold"/>
+                    <LinearLayout android:gravity="center" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent">
+                        <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_menu_gallery" app:tint="#E53935"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Image to PDF" android:textStyle="bold" android:layout_marginTop="8dp"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -136,49 +72,9 @@
                     android:layout_margin="8dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="4dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical">
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:src="@android:drawable/ic_menu_add"
-                            app:tint="#E53935" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Merge PDF"
-                            android:layout_marginTop="8dp"
-                            android:textStyle="bold"/>
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardOcr"
-                    android:layout_width="0dp"
-                    android:layout_height="120dp"
-                    android:layout_columnWeight="1"
-                    android:layout_margin="8dp"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="4dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical">
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:src="@android:drawable/ic_menu_search"
-                            app:tint="#E53935" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="PDF to OCR"
-                            android:layout_marginTop="8dp"
-                            android:textStyle="bold"/>
+                    <LinearLayout android:gravity="center" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent">
+                        <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_menu_add" app:tint="#E53935"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Merge PDF" android:textStyle="bold" android:layout_marginTop="8dp"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -190,49 +86,27 @@
                     android:layout_margin="8dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="4dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical">
-                        <ImageView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:src="@android:drawable/ic_menu_recent_history"
-                            app:tint="#E53935" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="فایل‌های من"
-                            android:layout_marginTop="8dp"
-                            android:textStyle="bold"/>
+                    <LinearLayout android:gravity="center" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent">
+                        <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_menu_recent_history" app:tint="#E53935"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="My Files" android:textStyle="bold" android:layout_marginTop="8dp"/>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
             </GridLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="صفحات اسکن شده فعلی"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"/>
-
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="200dp"
-                android:nestedScrollingEnabled="false" />
+                android:layout_marginTop="16dp"
+                android:minHeight="200dp"/>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:layout_marginTop="32dp"
-                android:text="Developed by Hamed Shabani Pour"
+                android:text="Scan2PDF v1.0 - Developed by Hamed"
                 android:textColor="#999999"
                 android:textSize="12sp" />
 
@@ -245,11 +119,11 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="24dp"
-        android:text="ساخت فایل PDF نهایی"
+        android:text="Generate PDF"
         android:visibility="gone"
-        app:icon="@android:drawable/ic_menu_save"
         app:backgroundTint="#4CAF50"
         android:textColor="#FFFFFF"
+        app:icon="@android:drawable/ic_menu_save"
         app:iconTint="#FFFFFF"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
