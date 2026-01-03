@@ -80,8 +80,8 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
-    // کتابخانه جایگزین معتبر و هماهنگ با اندروید 14 و جاوا 17
-    implementation 'com.github.jhansireddy:ScanLibrary:1.1'
+    // تغییر نسخه برای رفع خطای 401 Unauthorized در JitPack
+    implementation 'com.github.ct7ct7ct7:ScanLibrary:1.0.2'
 
     testImplementation 'junit:junit:4.13.2'
 }
