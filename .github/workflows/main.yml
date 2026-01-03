@@ -25,11 +25,29 @@ jobs:
         with:
           gradle-version: 8.5
 
-      - name: Build Debug APK
-        run: gradle :app:assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
+      # مرحله ساخت فایل کلید (Keystore) با استفاده از سکرت‌های تو
+      - name: Generate Keystore
+        run: |
+          if [ ! -f "app/${{ secrets.KEYSTORE_NAME }}" ]; then
+            keytool -genkey -v -keystore app/${{ secrets.KEYSTORE_NAME }} \
+            -alias ${{ secrets.ALIAS }} -keyalg RSA -keysize 2048 \
+            -validity 10000 -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
+            -keypass ${{ secrets.KEY_PASSWORD }} \
+            -dname "CN=Hamed, OU=Dev, O=Scan2PDF, L=Tehran, S=Tehran, C=IR"
+          fi
 
-      - name: Upload APK
+      # مرحله بیلد نسخه نهایی (Release) با استفاده از سکرت‌ها
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon
+        env:
+          ALIAS: ${{ secrets.ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_NAME: ${{ secrets.KEYSTORE_NAME }}
+
+      # آپلود فایل نهایی که اسمش در build.gradle تغییر کرده بود
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: Scan2PDF-Debug-APK
-          path: "**/build/outputs/apk/debug/*.apk"
+          name: Scan2PDF-Final
+          path: app/build/outputs/apk/release/Scan2PDF.apk
