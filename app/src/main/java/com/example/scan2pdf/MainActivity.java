@@ -35,7 +35,10 @@ import com.itextpdf.text.PageSize;
 import com.itextpdf.text.pdf.PdfCopy;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
-import com.pqpo.smartcropperlib.SmartCropper; // اضافه شد
+
+// استفاده از کتابخانه جایگزین برای حل خطای کامپایل
+import com.scanlibrary.ScanActivity;
+import com.scanlibrary.ScanConstants;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -51,7 +54,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_GALLERY_PICK = 2;
-    private static final int REQUEST_CROP_IMAGE = 3; // کد برای اسکنر
+    private static final int REQUEST_CROP_IMAGE = 3; 
     private static final int REQUEST_PDF_MERGE_PICK = 4;
     private static final int PERMISSION_CODE = 100;
     
@@ -64,9 +67,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        // مقداردهی اولیه اسکنر
-        SmartCropper.build(this);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -119,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("image/*");
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); // قابلیت انتخاب چندتایی حفظ شد
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         startActivityForResult(Intent.createChooser(intent, "Select Images"), REQUEST_GALLERY_PICK);
     }
 
@@ -128,18 +128,22 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                // بعد از گرفتن عکس با دوربین، به اسکنر برو
+                // ارسال مستقیم عکس دوربین به اسکنر هوشمند
                 startCrop(currentPhotoPath);
             } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
-                // انتخاب چندتایی از گالری مطابق کد خودت
                 if (data.getClipData() != null) {
                     for (int i = 0; i < data.getClipData().getItemCount(); i++) 
                         handleGalleryUri(data.getClipData().getItemAt(i).getUri());
                 } else if (data.getData() != null) handleGalleryUri(data.getData());
-            } else if (requestCode == REQUEST_CROP_IMAGE) {
-                // نتیجه اسکنر هوشمند
-                Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath);
-                if (bitmap != null) processBitmap(bitmap);
+            } else if (requestCode == REQUEST_CROP_IMAGE && data != null) {
+                // دریافت خروجی نهایی اسکنر
+                try {
+                    Uri uri = data.getExtras().getParcelable(ScanConstants.SCANNED_RESULT);
+                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+                    if (bitmap != null) processBitmap(bitmap);
+                } catch (IOException e) {
+                    Toast.makeText(this, "خطا در پردازش تصویر", Toast.LENGTH_SHORT).show();
+                }
             } else if (requestCode == REQUEST_PDF_MERGE_PICK && data != null) {
                 handlePdfMerge(data);
             }
@@ -147,9 +151,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startCrop(String path) {
-        Intent intent = new Intent(this, com.pqpo.smartcropperlib.view.CropActivity.class);
-        intent.putExtra("extra_source_file", path);
-        intent.putExtra("extra_save_file", path);
+        // آماده‌سازی اسکنر هوشمند (ScanLibrary)
+        Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".provider", new File(path));
+        Intent intent = new Intent(this, ScanActivity.class);
+        intent.putExtra(ScanConstants.OPEN_INTENT_PREFERENCE, ScanConstants.OPEN_CAMERA);
+        intent.putExtra(ScanConstants.SELECTED_BITMAP, uri.toString());
         startActivityForResult(intent, REQUEST_CROP_IMAGE);
     }
 
