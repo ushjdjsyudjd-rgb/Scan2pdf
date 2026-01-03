@@ -47,6 +47,8 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_GALLERY_PICK = 2;
+    private static final int REQUEST_WORD_PICK = 3;
+    private static final int REQUEST_PDF_MERGE_PICK = 4;
     private static final int PERMISSION_CODE = 100;
     
     private List<Bitmap> imageList = new ArrayList<>();
@@ -70,6 +72,9 @@ public class MainActivity extends AppCompatActivity {
         btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         MaterialCardView cardCapture = findViewById(R.id.cardCapture);
+        MaterialCardView cardGallery = findViewById(R.id.cardGallery);
+        MaterialCardView cardWordToPdf = findViewById(R.id.cardWordToPdf);
+        MaterialCardView cardMergePdf = findViewById(R.id.cardMergePdf);
         MaterialCardView cardArchive = findViewById(R.id.cardArchive);
 
         // تنظیم لیست پیش‌نمایش
@@ -88,12 +93,27 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3)); 
         recyclerView.setAdapter(adapter);
 
-        // عملکرد کارت اسکن با دوربین
+        // ۱. عملکرد کارت اسکن با دوربین
         if (cardCapture != null) {
             cardCapture.setOnClickListener(v -> checkPermissionAndOpen(true));
         }
 
-        // عملکرد کارت مشاهده آرشیو
+        // ۲. عملکرد Image to PDF (گالری)
+        if (cardGallery != null) {
+            cardGallery.setOnClickListener(v -> openGallery());
+        }
+
+        // ۳. عملکرد Word to PDF
+        if (cardWordToPdf != null) {
+            cardWordToPdf.setOnClickListener(v -> openFilePicker("application/msword", REQUEST_WORD_PICK));
+        }
+
+        // ۴. عملکرد Merge PDF
+        if (cardMergePdf != null) {
+            cardMergePdf.setOnClickListener(v -> openFilePicker("application/pdf", REQUEST_PDF_MERGE_PICK));
+        }
+
+        // ۵. عملکرد کارت مشاهده آرشیو
         if (cardArchive != null) {
             cardArchive.setOnClickListener(v -> {
                 Intent intent = new Intent(this, ArchiveActivity.class);
@@ -103,6 +123,15 @@ public class MainActivity extends AppCompatActivity {
 
         // عملکرد دکمه نهایی سازی PDF
         btnSavePdf.setOnClickListener(v -> showNamingDialog());
+    }
+
+    private void openFilePicker(String mimeType, int requestCode) {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType(mimeType);
+        if (requestCode == REQUEST_PDF_MERGE_PICK) {
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        }
+        startActivityForResult(Intent.createChooser(intent, "انتخاب فایل"), requestCode);
     }
 
     private void checkPermissionAndOpen(boolean isCamera) {
@@ -138,14 +167,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK) {
+        if (resultCode == RESULT_OK && data != null) {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
                 Bitmap bitmap = decodeSampledBitmapFromFile(currentPhotoPath, 1024, 1024);
                 if (bitmap != null) {
                     processBitmap(bitmap);
                     new File(currentPhotoPath).delete();
                 }
-            } else if (requestCode == REQUEST_GALLERY_PICK && data != null) {
+            } else if (requestCode == REQUEST_GALLERY_PICK) {
                 if (data.getClipData() != null) {
                     int count = data.getClipData().getItemCount();
                     for (int i = 0; i < count; i++) {
@@ -154,6 +183,12 @@ public class MainActivity extends AppCompatActivity {
                 } else if (data.getData() != null) {
                     handleGalleryUri(data.getData());
                 }
+            } else if (requestCode == REQUEST_WORD_PICK) {
+                Toast.makeText(this, "فایل Word انتخاب شد. در حال آماده‌سازی مبدل...", Toast.LENGTH_SHORT).show();
+                // در اینجا منطق تبدیل Word اضافه خواهد شد
+            } else if (requestCode == REQUEST_PDF_MERGE_PICK) {
+                Toast.makeText(this, "فایل‌های PDF برای ادغام انتخاب شدند", Toast.LENGTH_SHORT).show();
+                // در اینجا منطق Merge اضافه خواهد شد
             }
         }
     }
