@@ -58,6 +58,9 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle("پی دی اف ساز");
+        }
 
         btnSavePdf = findViewById(R.id.btnSavePdf);
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
@@ -84,31 +87,30 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "اسکن فایل جدید");
-        menu.add(0, 2, 0, "اسکن‌های قبلی");
-        menu.add(0, 3, 0, "درباره برنامه");
+        menu.add(0, 1, 0, "اسکن جدید").setIcon(android.R.drawable.ic_menu_add);
+        menu.add(0, 2, 0, "اسکن‌های قبلی").setIcon(android.R.drawable.ic_menu_recent_history);
+        menu.add(0, 3, 0, "درباره سازنده").setIcon(android.R.drawable.ic_menu_info_details);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == 1) {
-            checkPermissionAndOpen();
-        } else if (id == 2) {
-            // رفتن به صفحه آرشیو
-            startActivity(new Intent(this, ArchiveActivity.class));
-        } else if (id == 3) {
-            showAboutDialog();
-        }
+        if (id == 1) checkPermissionAndOpen();
+        else if (id == 2) startActivity(new Intent(this, ArchiveActivity.class));
+        else if (id == 3) showAboutDialog();
         return super.onOptionsItemSelected(item);
     }
 
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
-            .setTitle("درباره برنامه")
-            .setMessage("ساخته شده توسط حامد شعبانی پور\nDevelop by Hamed@")
-            .setPositiveButton("بستن", null).show();
+            .setTitle("درباره توسعه‌دهنده")
+            .setMessage("این نرم‌افزار توسط حامد شعبانی پور طراحی و توسعه یافته است.\n\n" +
+                        "سازنده: حامد شعبانی پور\n" +
+                        "ایمیل: ushjdjsyudjd@gmail.com\n\n" +
+                        "نسخه: 1.0.0")
+            .setPositiveButton("بستن", null)
+            .show();
     }
 
     private void checkPermissionAndOpen() {
@@ -124,9 +126,7 @@ public class MainActivity extends AppCompatActivity {
     private void openCamera() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         File photoFile = null;
-        try {
-            photoFile = createImageFile();
-        } catch (IOException ignored) {}
+        try { photoFile = createImageFile(); } catch (IOException ignored) {}
         
         if (photoFile != null) {
             Uri photoURI = FileProvider.getUriForFile(this, getPackageName() + ".provider", photoFile);
@@ -152,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
                 imageList.add(applyGrayscale(bitmap));
                 adapter.notifyDataSetChanged();
                 btnSavePdf.setVisibility(View.VISIBLE);
-                new File(currentPhotoPath).delete(); // پاکسازی موقت
+                new File(currentPhotoPath).delete();
             }
         }
     }
@@ -173,9 +173,7 @@ public class MainActivity extends AppCompatActivity {
         if (height > reqHeight || width > reqWidth) {
             final int halfHeight = height / 2;
             final int halfWidth = width / 2;
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2;
-            }
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) inSampleSize *= 2;
         }
         return inSampleSize;
     }
@@ -201,25 +199,24 @@ public class MainActivity extends AppCompatActivity {
         container.addView(input);
 
         new AlertDialog.Builder(this)
-            .setTitle("تبدیل به PDF")
+            .setTitle("ذخیره PDF")
             .setView(container)
-            .setPositiveButton("ذخیره", (dialog, which) -> createPdf(input.getText().toString().trim()))
-            .setNegativeButton("انصراف", null).show();
+            .setPositiveButton("تایید", (dialog, which) -> createPdf(input.getText().toString().trim()))
+            .setNegativeButton("لغو", null).show();
     }
 
     private void createPdf(String fileName) {
         Document document = new Document(PageSize.A4, 20, 20, 20, 20);
         try {
             String timeDir = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date());
-            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF/" + timeDir);
+            File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Scan2PDF");
             if (!root.exists()) root.mkdirs();
-
+            
             String name = (fileName.isEmpty()) ? "Scan_" + timeDir : fileName;
             File pdfFile = new File(root, name + ".pdf");
             
             PdfWriter.getInstance(document, new FileOutputStream(pdfFile));
             document.open();
-
             for (Bitmap bmp : imageList) {
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 bmp.compress(Bitmap.CompressFormat.JPEG, 100, stream);
@@ -230,15 +227,14 @@ public class MainActivity extends AppCompatActivity {
                 document.newPage();
             }
             document.close();
-            Toast.makeText(this, "ذخیره شد در پوشه Downloads/Scan2PDF", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "ذخیره شد در دانلودها", Toast.LENGTH_LONG).show();
             sharePdf(pdfFile);
             
             imageList.clear();
             adapter.notifyDataSetChanged();
             btnSavePdf.setVisibility(View.GONE);
-            
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در تولید فایل", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "خطا در ساخت PDF", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -249,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
             intent.setType("application/pdf");
             intent.putExtra(Intent.EXTRA_STREAM, uri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(intent, "ارسال با:"));
+            startActivity(Intent.createChooser(intent, "ارسال فایل..."));
         } catch (Exception e) {
             Toast.makeText(this, "خطا در اشتراک‌گذاری", Toast.LENGTH_SHORT).show();
         }
