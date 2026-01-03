@@ -20,7 +20,11 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5 # اجبار به استفاده از نسخه 8.5 برای جلوگیری از خطای Mutation
+
       - name: Build Debug APK
-        # به جای استفاده از ./gradlew، از خودِ دستور gradle استفاده می‌کنیم
-        # این کار باعث می‌شود تنظیمات خراب اسکریپت gradlew نادیده گرفته شود
-        run: gradle assembleDebug --no-daemon
+        # استفاده از دستور مستقیم gradle برای دور زدن مشکلات اسکریپت
+        run: gradle assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
